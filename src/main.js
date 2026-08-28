@@ -68,6 +68,121 @@ ipcMain.handle("config:read", async (_e, kind) => {
   }
 });
 
+/* ---------- the tools this app drives ---------- */
+
+/* Installing and updating go through winget, because it is the one package
+   manager already on a current Windows and it knows all three. Versions are
+   read from the tools themselves rather than from winget, so a scoop or manual
+   install reports honestly instead of looking absent.
+
+   Nothing is ever installed or updated without being asked for. The latest
+   versions are not even looked up until the Tools screen is opened, so an app
+   sitting in the background never reaches the network on its own. */
+const TOOLS = {
+  komorebi: {
+    label: "komorebi",
+    what: "The window manager itself. Nothing else here does anything without it.",
+    exe: () => P.komorebicExe,
+    site: "https://github.com/LGUG2Z/komorebi",
+    channels: { stable: "LGUG2Z.komorebi", nightly: "LGUG2Z.komorebi.Nightly" },
+  },
+  whkd: {
+    label: "whkd",
+    what: "Runs your keyboard shortcuts. Only the Shortcuts tab needs it.",
+    exe: () => P.whkdExe,
+    tab: "shortcuts",
+    site: "https://github.com/LGUG2Z/whkd",
+    channels: { stable: "LGUG2Z.whkd" },
+  },
+  yasb: {
+    label: "YASB",
+    what: "The status bar. Only the Status bar tab needs it.",
+    exe: () => P.yasbcExe,
+    tab: "bar",
+    site: "https://github.com/amnweb/yasb",
+    channels: { stable: "AmN.yasb" },
+  },
+};
+
+// Each of the three prints its version differently: "komorebic 0.1.42",
+// "whkd 0.2.10", "YASB Reborn v2.0.6 x64 (stable)". The number is the only part
+// worth keeping.
+const versionIn = (text) => (String(text).match(/(\d+\.\d+(?:\.\d+)?)/) || [])[1] || null;
+
+const compareVersions = (a, b) => {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0);
+  }
+  return 0;
+};
+
+// Local and quick: no network, so it can run whenever.
+ipcMain.handle("tools:installed", async () => {
+  const out = {};
+  for (const [name, tool] of Object.entries(TOOLS)) {
+    const exe = tool.exe();
+    const r = exe ? await run(exe, ["--version"]) : null;
+    out[name] = {
+      label: tool.label,
+      what: tool.what,
+      tab: tool.tab || null,
+      site: tool.site,
+      channels: Object.keys(tool.channels),
+      path: exe,
+      installed: !!exe,
+      version: r ? versionIn(r.stdout || r.stderr) : null,
+    };
+  }
+  return out;
+});
+
+const wingetArgs = (verb, id) => [
+  verb, "--id", id, "--exact", "--source", "winget", "--silent",
+  "--accept-package-agreements", "--accept-source-agreements",
+];
+
+// Only when the Tools screen is open, never on its own.
+ipcMain.handle("tools:latest", async () => {
+  const winget = await run("winget", ["--version"]);
+  if (!winget.ok) return { winget: false, versions: {} };
+
+  const versions = {};
+  for (const [name, tool] of Object.entries(TOOLS)) {
+    versions[name] = {};
+    for (const [channel, id] of Object.entries(tool.channels)) {
+      const r = await run("winget", ["show", "--id", id, "--exact", "--source", "winget"]);
+      const line = String(r.stdout).split(/\r?\n/).find((l) => /^Version:/i.test(l));
+      versions[name][channel] = line ? versionIn(line) : null;
+    }
+  }
+  return { winget: true, version: versionIn(winget.stdout), versions };
+});
+
+ipcMain.handle("tools:install", async (_e, name, channel, upgrade) => {
+  const tool = TOOLS[name];
+  if (!tool) throw new Error(`unknown tool: ${name}`);
+  const id = tool.channels[channel] || tool.channels.stable;
+
+  // An msi cannot replace a file that is running, so komorebi and whkd are
+  // stopped first and put back afterwards if they were up.
+  const wasRunning = name === "yasb" ? false : await isRunning(`${name}.exe`);
+  if (wasRunning) await run(P.komorebicExe, name === "komorebi" ? ["stop"] : []);
+  if (wasRunning) await run("taskkill", ["/F", "/IM", `${name}.exe`]);
+
+  const r = await run("winget", wingetArgs(upgrade ? "upgrade" : "install", id),
+    { maxBuffer: 8 * 1024 * 1024 });
+  P.rediscover();
+
+  if (wasRunning && name === "komorebi") await restartKomorebi();
+  else if (wasRunning) launch(TOOLS[name].exe());
+
+  const exe = tool.exe();
+  const after = exe ? versionIn((await run(exe, ["--version"])).stdout) : null;
+  return { ok: !!exe, version: after, output: firstLine(r.stdout || r.stderr) };
+});
+
 ipcMain.handle("setup:check", () => P.report());
 
 ipcMain.handle("setup:locate", async (_e, key) => {
@@ -711,6 +826,13 @@ ipcMain.handle("config:diff", async (_e, kind, next) => {
     if (b[i] !== undefined) out.push({ sign: "+", line: b[i], n: i + 1 });
   }
   return out;
+});
+
+// Only the project pages these tools live at, never an arbitrary string from
+// the page.
+const TOOL_SITES = new Set(Object.values(TOOLS).map((t) => t.site));
+ipcMain.handle("link:open", (_e, url) => {
+  if (TOOL_SITES.has(url)) shell.openExternal(url);
 });
 
 ipcMain.handle("file:reveal", (_e, kind) => {

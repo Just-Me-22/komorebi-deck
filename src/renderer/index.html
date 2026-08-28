@@ -420,11 +420,27 @@
   </div>
 </div>
 
+<div class="modal" id="tools-modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>komorebi, whkd and YASB</h2>
+      <button class="ghost" id="tools-close">Close</button>
+    </div>
+    <div style="padding: 14px 18px 18px">
+      <p class="note" id="tools-note"></p>
+      <div id="tools-list" class="tool-list"></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="setup-modal" hidden>
   <div class="modal-card">
     <div class="modal-head">
       <h2>Before this can do anything</h2>
-      <button class="ghost" id="setup-close">Carry on anyway</button>
+      <div class="sc-toolbar">
+        <button class="accent" id="setup-get">Install what is missing</button>
+        <button class="ghost" id="setup-close">Carry on anyway</button>
+      </div>
     </div>
     <div style="padding: 14px 18px 18px">
       <p class="note" id="setup-intro"></p>
@@ -470,6 +486,7 @@
 <script src="preview.js"></script>
 <script src="rules.js"></script>
 <script src="map.js"></script>
+<script src="tools.js"></script>
 <script src="collapse.js"></script>
 <script src="setup.js"></script>
 <script src="search.js"></script>

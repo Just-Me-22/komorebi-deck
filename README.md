@@ -24,12 +24,18 @@ npm install && npm start
 
 ## What you need
 
-komorebi. That is the only hard requirement; the app looks for `komorebic` on
-your PATH, then in scoop, then in winget's links, then in Program Files. whkd
-and YASB are each optional and only disable their own tab.
+komorebi. That is the only hard requirement; whkd and YASB are optional and
+only affect their own tab.
 
-If something is not where the app expects, it says so on first launch and lets
-you point at it. That choice is remembered in
+You do not have to install them yourself. A tab whose program is missing says
+so, and the Tools screen will fetch any of the three through winget, komorebi's
+nightly channel included. Nothing is ever installed or updated without being
+asked, and the latest versions are not looked up until you open that screen.
+
+If you already have them, they are found on your PATH, in scoop, in winget's
+links or in Program Files, and versions are read from the tools themselves so a
+scoop or manual install reports honestly. Anything still missing can be pointed
+at by hand, and that choice is remembered in
 `~/.config/komorebi-deck/paths.json`.
 
 ## What it edits

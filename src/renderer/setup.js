@@ -72,6 +72,13 @@ document.querySelector("#setup-close").addEventListener("click", () => {
   document.querySelector("#setup-modal").hidden = true;
 });
 
+// Pointing at something you do not have is no use, so the way to get it sits
+// next to the way to find it.
+document.querySelector("#setup-get").addEventListener("click", () => {
+  document.querySelector("#setup-modal").hidden = true;
+  showTools();
+});
+
 /* ---------- what this komorebi actually accepts ---------- */
 
 // The lists in enums.js came from one version of komorebi. Anybody on a

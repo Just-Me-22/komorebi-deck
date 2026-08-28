@@ -1269,7 +1269,7 @@ $$('input[type="number"]').forEach((el) => dressNumber(el));
 // app.js is loaded before setup.js and search.js, so the start-up work waits
 // for the whole page rather than running the moment this file is parsed.
 window.addEventListener("DOMContentLoaded", async () => {
-  const [live] = await Promise.all([applySchema(), checkSetup()]);
+  const [live] = await Promise.all([applySchema(), checkSetup(), loadTools()]);
   if (live?.changed.length) {
     msg(`Read the options from your komorebi${live.version ? ` ${live.version}` : ""}, `
       + `${live.changed.length} differ from the ones shipped with this app.`, "ok");

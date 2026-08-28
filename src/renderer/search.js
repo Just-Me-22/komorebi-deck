@@ -91,6 +91,7 @@ function commandEntries() {
     ["Restart whkd", "Reload your shortcuts", () => document.querySelector('[data-restart="whkd"]').click()],
     ["Reload the bar", "yasbc reload", () => document.querySelector('[data-restart="yasb"]').click()],
     ["Where things are installed", "The setup screen", () => checkSetup({ force: true })],
+    ["komorebi, whkd and YASB", "What you have, and getting what you do not", () => showTools()],
   ].map(([label, key, run]) => ({ kind: "action", label, key, group: "Do", tab: "", run }));
 
   return [...tabs, ...acts];

@@ -8,6 +8,11 @@ contextBridge.exposeInMainWorld("wm", {
   restart: (name) => ipcRenderer.invoke("service:restart", name),
   komorebic: (args) => ipcRenderer.invoke("komorebic:run", args),
   reveal: (kind) => ipcRenderer.invoke("file:reveal", kind),
+  open: (url) => ipcRenderer.invoke("link:open", url),
+  toolsInstalled: () => ipcRenderer.invoke("tools:installed"),
+  toolsLatest: () => ipcRenderer.invoke("tools:latest"),
+  toolsInstall: (name, channel, upgrade) =>
+    ipcRenderer.invoke("tools:install", name, channel, upgrade),
   restore: (kind, backupPath) => ipcRenderer.invoke("config:restore", kind, backupPath),
   confirm: (message, detail) => ipcRenderer.invoke("dialog:confirm", message, detail),
   snapshots: () => ipcRenderer.invoke("snapshot:list"),

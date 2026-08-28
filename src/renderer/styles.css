@@ -664,7 +664,7 @@ button.has-key kbd {
   stroke-dasharray: 3 3; opacity: 0.55; rx: 2.5;
 }
 .pv-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
-.pv-box .ghost { margin-top: 8px; }
+.pv-box .pv-replay { margin-top: 8px; }
 .pv-area { rx: 3; }
 .pv-cap {
   margin: 6px 0 0; max-width: 340px;
@@ -798,6 +798,37 @@ button.has-key kbd {
   font-size: 11.5px; color: var(--dim); min-width: 52px; text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- the tools this app drives ---------- */
+/* A tab whose program is missing stays clickable, because the reason it is
+   empty is the useful part. It just stops looking ready. */
+.tab.missing { color: var(--faint); }
+.tab.missing::after {
+  content: "not installed";
+  margin-left: auto; padding-right: 4px;
+  font-size: 8.5px; letter-spacing: 0.04em; color: var(--warn);
+}
+.tab.missing { display: flex; align-items: center; }
+
+.tool-list { display: flex; flex-direction: column; margin-top: 14px; }
+.tool {
+  display: grid; grid-template-columns: 8px 1fr auto auto; gap: 14px;
+  align-items: center; padding: 13px 2px; border-bottom: 1px dotted var(--rule);
+}
+.tool:last-child { border-bottom: none; }
+.tool.focus { background: var(--rule-soft); border-radius: var(--radius); padding-left: 10px; }
+.tool i { width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+.tool.gone i { background: var(--warn); }
+.tool-name { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
+.tool-name em { font-style: normal; font-size: 10.5px; color: var(--faint); max-width: 46ch; }
+.tool-ver { display: flex; flex-direction: column; gap: 3px; text-align: right; }
+.tool-ver b {
+  font-family: var(--mono); font-size: 12px; font-weight: 400; color: var(--text);
+}
+.tool.gone .tool-ver b { color: var(--warn); }
+.tool-ver em { font-style: normal; font-size: 10px; color: var(--faint); }
+.tool-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.tool-acts button { white-space: nowrap; }
 
 /* ---------- what this machine has ---------- */
 .setup-list { display: flex; flex-direction: column; margin-top: 14px; }

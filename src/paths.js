@@ -117,6 +117,13 @@ paths.report = () =>
     isExe: key.endsWith("Exe"),
   }));
 
+// After something is installed there is a new executable to find, and the
+// answers here were worked out when the app started.
+paths.rediscover = () => {
+  Object.assign(paths, discover(), loadOverrides());
+  return paths.report();
+};
+
 paths.setOverride = (key, value) => {
   if (!(key in found)) throw new Error(`unknown path: ${key}`);
   const saved = loadOverrides();
