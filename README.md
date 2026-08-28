@@ -76,6 +76,17 @@ Editing these files by hand is how you end up without a window manager, so:
 - **Setups** keeps named copies of every config file so you can switch between
   whole arrangements.
 
+## Defaults
+
+Every key in `komorebi.json` is optional, and an absent one means komorebi uses
+its own value. Rather than show an empty box for those, the app reads komorebi's
+defaults out of the same schema it reads the dropdown values from, shows them,
+and marks the row as komorebi's rather than yours.
+
+Nothing is written until you change it, so your config only ever gains the
+decisions you actually made, and anything you leave alone keeps following
+komorebi, including when a future version changes a default.
+
 ## Versions
 
 The dropdowns are built from `komorebic static-config-schema`, read from the

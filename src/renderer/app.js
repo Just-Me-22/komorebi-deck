@@ -29,7 +29,7 @@ const LAYOUTS = KENUM.LAYOUTS;
 
 const state = {
   komorebi: null, whkd: null, yasbConfig: null,
-  rawKind: "komorebi", monitor: 0, dirty: new Set(),
+  rawKind: "komorebi", monitor: 0, dirty: new Set(), defaults: {},
 };
 
 // Everything workspace-shaped lives under one monitor, so the whole screen
@@ -98,7 +98,9 @@ function dressNumber(input, withSlider = true) {
 
   // Loading a config sets these values in code, which fires no event, so the
   // slider has to be told separately or it sits wherever it started.
-  const follow = () => { if (slider && input.value !== "") slider.value = input.value; };
+  // An inherited value lives in the placeholder rather than the value, so the
+  // slider reads whichever one the box is actually showing.
+  const follow = () => { if (slider) slider.value = startFrom(input); };
   input.addEventListener("input", follow);
   input.addEventListener("change", follow);
   input.syncSlider = follow;
@@ -276,11 +278,24 @@ function renderKomorebi() {
     else if (el.tagName !== "SELECT") el.value = val;
   }
 
+  // A key that is not in the file is not unset: komorebi has its own value for
+  // it. Showing that rather than an empty box is the difference between the app
+  // telling you what is happening and telling you what has been written down.
+  // Nothing is written until it is actually changed, so the file only ever
+  // gains the decisions someone made.
   for (const el of $$("[data-key]")) {
     const key = el.dataset.key;
-    if (!(key in c)) continue;
-    if (el.type === "checkbox") el.checked = !!c[key];
-    else if (el.tagName !== "SELECT") el.value = c[key];
+    const mine = key in c;
+    const value = mine ? c[key] : state.defaults[key];
+    markInherited(el, !mine && value !== undefined);
+    if (value === undefined) continue;
+
+    if (el.type === "checkbox") el.checked = !!value;
+    else if (el.tagName === "SELECT") el.value = value;
+    else if (mine) el.value = value;
+    // A number keeps its box empty and shows the default greyed out behind it,
+    // which is how an inherited value is shown everywhere else in the app.
+    else { el.value = ""; el.placeholder = value; }
   }
 
   syncNumbers();
@@ -434,6 +449,13 @@ function clearDirty() {
   paintDirty();
 }
 
+// The badge hangs off the config-key line, so it needs no markup of its own and
+// disappears the moment the row stops being inherited.
+function markInherited(el, on) {
+  el.closest(".row")?.classList.toggle("inherited", !!on);
+  if (el.tagName === "SELECT") el.classList.toggle("is-inherited", !!on);
+}
+
 function readControl(el) {
   if (el.type === "checkbox") return el.checked;
   if (el.type === "number" || el.type === "range") return Number(el.value);
@@ -455,6 +477,7 @@ function applyControl(e) {
   if (flat) {
     const value = readControl(flat);
     state.komorebi[flat.dataset.key] = value;
+    markInherited(flat, false);
     markDirty("komorebi");
     // Only on change, so dragging a slider does not fire a komorebic call a frame.
     if (e.type === "change") liveApply(flat.dataset.key, value);

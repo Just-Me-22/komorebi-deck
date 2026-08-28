@@ -638,6 +638,14 @@ ipcMain.handle("komorebic:schema", async () => {
     const schema = JSON.parse(text);
     const defs = schema.definitions || schema.$defs || {};
     const out = { version: (schema.description || "").match(/v[\d.]+/)?.[0] || null };
+
+    // Every key in komorebi.json is optional, and an absent one means komorebi
+    // uses its own value. It states most of those, so the app can show what is
+    // really in effect instead of an empty box.
+    out.defaults = {};
+    for (const [key, prop] of Object.entries(schema.properties || {})) {
+      if (prop && "default" in prop && prop.default !== null) out.defaults[key] = prop.default;
+    }
     // Filtered rather than rejected wholesale: AnimationStyle lists 31 named
     // easings and then CubicBezier, which takes four numbers instead of being a
     // name, and demanding every entry be a string threw the other 31 away.

@@ -89,5 +89,9 @@ async function applySchema() {
     if (before && before.join() !== values.join()) changed.push(key);
     window.KENUM[key] = values;
   }
-  return { version: live.version, changed };
+
+  // What komorebi does when a key is absent, which is most keys on a config
+  // nobody has edited yet.
+  state.defaults = live.defaults || {};
+  return { version: live.version, changed, defaults: Object.keys(state.defaults).length };
 }

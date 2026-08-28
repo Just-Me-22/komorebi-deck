@@ -682,6 +682,17 @@ button.has-key kbd {
 .pick-row .exe { font-size: 12px; color: var(--text); display: flex; flex-direction: column; gap: 1px; }
 .pick-row .exe small { font-size: 10px; color: var(--faint); }
 .pick-row .exe small em { font-style: normal; color: var(--warn); }
+/* ---------- inherited from komorebi ---------- */
+/* Every key in komorebi.json is optional, so a setting nobody has written down
+   is still doing something. The row says whose value it is showing. */
+.row.inherited .lbl em::after {
+  content: " · komorebi's default";
+  color: var(--glow-dim);
+}
+.row.inherited select.is-inherited { color: var(--dim); border-style: dashed; }
+.row.inherited input[type="number"] { border-style: dashed; }
+.row.inherited input[type="checkbox"] { opacity: 0.72; }
+
 /* ---------- folding a section ---------- */
 .group > h2 { cursor: pointer; user-select: none; }
 .group > h2:hover { color: var(--dim); }
