@@ -1,13 +1,13 @@
 {
   "name": "komorebi-deck",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Editor for komorebi, whkd and YASB configuration",
   "license": "MIT",
   "author": "Just-Me-22",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win --publish never"
+    "build": "electron-builder --win --publish never && node build/zip.js"
   },
   "devDependencies": {
     "electron": "^33.0.0",
@@ -19,12 +19,27 @@
   "build": {
     "appId": "dev.komorebideck.app",
     "productName": "Komorebi Deck",
-    "directories": { "output": "dist" },
-    "files": ["src/**/*", "build/icon.ico", "package.json"],
-    "asarUnpack": ["**/*.ps1"],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "build/icon.ico",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "**/*.ps1"
+    ],
     "win": {
       "icon": "build/icon.ico",
-      "target": [{ "target": "zip", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "artifactName": "Komorebi-Deck-${version}-windows-x64.${ext}"
     }
   }
