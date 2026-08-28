@@ -534,19 +534,12 @@ function renderWallpaper() {
 function renderLooks() {
   const c = state.komorebi;
   if (!c) return;
+  // Only the options. What is selected, here and for border, border_offset and
+  // transparency_alpha, is applyValues' job: these used to carry their own
+  // hardcoded fallbacks, which was a second set of komorebi's defaults kept by
+  // hand and free to drift from the ones komorebi reports.
   fillSelect(document.querySelector('[data-key="border_implementation"]'),
-    KENUM.BORDER_IMPLEMENTATIONS, c.border_implementation || "Komorebi");
-
-  // These have a meaningful default when absent, so an unset key still needs a value shown.
-  const alpha = document.querySelector('[data-key="transparency_alpha"]');
-  if (alpha) {
-    alpha.value = c.transparency_alpha ?? 200;
-    document.querySelector("#alpha-out").textContent = alpha.value;
-  }
-  const border = document.querySelector('[data-key="border"]');
-  if (border) border.checked = c.border !== false;
-  const offset = document.querySelector('[data-key="border_offset"]');
-  if (offset) offset.value = c.border_offset ?? -1;
+    KENUM.BORDER_IMPLEMENTATIONS, c.border_implementation ?? state.defaults.border_implementation);
 
   renderBorderColours();
   renderWallpaper();

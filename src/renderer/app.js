@@ -178,6 +178,7 @@ function renderAll() {
   // Drawn now rather than when its tab is first opened, so its rows can be
   // found by the palette without having been there once already.
   if (typeof renderSettings === "function") renderSettings();
+  applyValues();
   if (typeof setupGroups === "function") setupGroups();
 }
 
@@ -278,28 +279,46 @@ function renderKomorebi() {
     else if (el.tagName !== "SELECT") el.value = val;
   }
 
-  // A key that is not in the file is not unset: komorebi has its own value for
-  // it. Showing that rather than an empty box is the difference between the app
-  // telling you what is happening and telling you what has been written down.
-  // Nothing is written until it is actually changed, so the file only ever
-  // gains the decisions someone made.
+  applyValues();
+  renderWorkspaces();
+}
+
+/* A key that is not in the file is not unset: komorebi has its own value for
+   it. Showing that rather than an empty box is the difference between the app
+   telling you what is happening and telling you what has been written down.
+   Nothing is written until it is changed, so the file only ever gains the
+   decisions someone made.
+
+   Run again at the end of a render, because a value cannot be put into a
+   dropdown before something has filled its options, and several of those are
+   filled by the tab that owns them rather than here. */
+function applyValues() {
+  const c = state.komorebi;
+  if (!c) return;
+
   for (const el of $$("[data-key]")) {
     const key = el.dataset.key;
     const mine = key in c;
     const value = mine ? c[key] : state.defaults[key];
     markInherited(el, !mine && value !== undefined);
-    if (value === undefined) continue;
+    if (value === undefined) {
+      if (el.tagName === "SELECT") offerUnset(el);
+      continue;
+    }
 
     if (el.type === "checkbox") el.checked = !!value;
     else if (el.tagName === "SELECT") el.value = value;
-    else if (mine) el.value = value;
-    // A number keeps its box empty and shows the default greyed out behind it,
-    // which is how an inherited value is shown everywhere else in the app.
+    // A slider has nowhere to show a value it does not hold, so it takes the
+    // inherited one directly. A number keeps its box empty and shows it greyed
+    // behind, which is how the app shows an inherited gap everywhere else.
+    else if (mine || el.type === "range") el.value = value;
     else { el.value = ""; el.placeholder = value; }
   }
 
   syncNumbers();
-  renderWorkspaces();
+  const alpha = $('[data-key="transparency_alpha"]');
+  const out = $("#alpha-out");
+  if (alpha && out) out.textContent = alpha.value;
 }
 
 function renderWorkspaces() {
@@ -449,6 +468,20 @@ function clearDirty() {
   paintDirty();
 }
 
+// A dropdown with nothing selected shows its first option, which reads as a
+// decision somebody made. These three genuinely have no value until you pick
+// one, so they say that, and picking it again takes the key back out.
+function offerUnset(el) {
+  let blank = el.querySelector('option[value=""]');
+  if (!blank) {
+    blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = "komorebi decides";
+    el.prepend(blank);
+  }
+  el.value = "";
+}
+
 // The badge hangs off the config-key line, so it needs no markup of its own and
 // disappears the moment the row stops being inherited.
 function markInherited(el, on) {
@@ -476,7 +509,9 @@ function applyControl(e) {
   const flat = e.target.closest("[data-key]");
   if (flat) {
     const value = readControl(flat);
-    state.komorebi[flat.dataset.key] = value;
+    // Choosing "komorebi decides" is how a key comes back out of the file.
+    if (value === "") delete state.komorebi[flat.dataset.key];
+    else state.komorebi[flat.dataset.key] = value;
     markInherited(flat, false);
     markDirty("komorebi");
     // Only on change, so dragging a slider does not fire a komorebic call a frame.
