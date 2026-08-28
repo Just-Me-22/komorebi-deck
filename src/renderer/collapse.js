@@ -33,13 +33,48 @@ function groupKey(group) {
 }
 
 function foldGroup(group, open) {
-  group.classList.toggle("folded", !open);
+  slide(group, () => group.classList.toggle("folded", !open));
   heading(group)?.setAttribute("aria-expanded", String(open));
   const folded = loadFolded();
   const key = groupKey(group);
   if (open) folded.delete(key);
   else folded.add(key);
   saveFolded(folded);
+}
+
+/* Folded content is display:none, which cannot be animated between, so the
+   section's own height is measured before and after and moved between the two.
+   That needs no wrapper element, which matters here: a good deal of the
+   stylesheet selects the direct children of a section, and burying them one
+   level deeper to have something to animate would have broken all of it.
+
+   Overflow is only hidden while it runs. Leaving it hidden would clip the
+   things that legitimately hang outside a section, the workspace menu on the
+   live map being the one that would have bitten. */
+const SLIDE = 220;
+
+function slide(group, change) {
+  if (document.documentElement.dataset.motion === "off"
+      || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    change();
+    return;
+  }
+
+  const from = group.offsetHeight;
+  change();
+  const to = group.offsetHeight;
+  if (from === to) return;
+
+  group.classList.add("sliding");
+  group.style.height = `${from}px`;
+  void group.offsetHeight;
+  group.style.height = `${to}px`;
+
+  clearTimeout(group.slideTimer);
+  group.slideTimer = setTimeout(() => {
+    group.classList.remove("sliding");
+    group.style.height = "";
+  }, SLIDE);
 }
 
 // Called again after every render, because Settings and the map rebuild their

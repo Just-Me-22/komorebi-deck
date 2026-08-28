@@ -5,46 +5,74 @@
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-function svg(w, h) {
-  const el = document.createElementNS(SVG_NS, "svg");
+/* A redraw updates the shapes that are already there instead of replacing them.
+   That is the whole reason these can animate: an element that survives a change
+   can transition from its old geometry to its new one, and one that was thrown
+   away and rebuilt has nothing to transition from. Shapes are matched by the
+   order they are drawn in, which is stable for a given picture; when a setting
+   changes the number of them, the extras are dropped and the new ones simply
+   appear without moving. */
+function slot(parent, tag) {
+  const at = parent.pvAt++;
+  const have = parent.childNodes[at];
+  if (have && have.tagName === tag) return have;
+  const el = document.createElementNS(SVG_NS, tag);
+  if (have) have.replaceWith(el);
+  else parent.appendChild(el);
+  return el;
+}
+
+function svg(box, w, h) {
+  let el = box.querySelector("svg.pv");
+  if (!el) {
+    el = document.createElementNS(SVG_NS, "svg");
+    el.setAttribute("class", "pv");
+    box.prepend(el);
+  }
   el.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  el.setAttribute("class", "pv");
+  el.pvAt = 0;
   return el;
 }
 
 function rect(parent, x, y, w, h, cls) {
-  const r = document.createElementNS(SVG_NS, "rect");
+  const r = slot(parent, "rect");
   r.setAttribute("x", x); r.setAttribute("y", y);
   r.setAttribute("width", Math.max(0, w)); r.setAttribute("height", Math.max(0, h));
-  if (cls) r.setAttribute("class", cls);
-  parent.appendChild(r);
+  r.setAttribute("class", cls || "");
   return r;
 }
 
+function text(parent, x, y, str, cls) {
+  const t = slot(parent, "text");
+  t.setAttribute("x", x); t.setAttribute("y", y);
+  t.setAttribute("class", cls || "pv-t");
+  t.textContent = str;
+  return t;
+}
+
+// Every picture ends with its caption, so this doubles as "nothing more is
+// coming": anything left over from a version of the drawing with more shapes in
+// it is cleared out here.
 // SVG text does not wrap and does not clip, so a caption that outgrows the
-// viewBox just runs off the side of the picture. Captions are HTML now.
+// viewBox just runs off the side of the picture. Captions are HTML.
 function pvCaption(box, str) {
-  const p = document.createElement("p");
-  p.className = "pv-cap";
+  const s = box.querySelector("svg.pv");
+  if (s) while (s.childNodes.length > s.pvAt) s.lastChild.remove();
+
+  let p = box.querySelector(".pv-cap");
+  if (!p) {
+    p = document.createElement("p");
+    p.className = "pv-cap";
+  }
   p.textContent = str;
   box.appendChild(p);
   return p;
 }
 
-function text(parent, x, y, str, cls) {
-  const t = document.createElementNS(SVG_NS, "text");
-  t.setAttribute("x", x); t.setAttribute("y", y);
-  t.setAttribute("class", cls || "pv-t");
-  t.textContent = str;
-  parent.appendChild(t);
-  return t;
-}
-
 /* ---------- where a new floating window lands ---------- */
 
 function drawPlacement(box, placement, ratio) {
-  box.innerHTML = "";
-  const s = svg(200, 118);
+  const s = svg(box, 200, 118);
   rect(s, 1, 1, 198, 116, "pv-screen");
 
   let says;
@@ -60,7 +88,6 @@ function drawPlacement(box, placement, ratio) {
     rect(s, (200 - w) / 2, (118 - h) / 2, w, h, "pv-win");
     says = `centred and resized to ${ratio || "Widescreen"}`;
   }
-  box.appendChild(s);
   pvCaption(box, says);
 }
 
@@ -68,8 +95,7 @@ function drawPlacement(box, placement, ratio) {
 
 function drawBorder(box) {
   const c = state.komorebi;
-  box.innerHTML = "";
-  const s = svg(200, 110);
+  const s = svg(box, 200, 110);
   rect(s, 1, 1, 198, 108, "pv-screen");
 
   const win = { x: 46, y: 24, w: 108, h: 62 };
@@ -86,7 +112,6 @@ function drawBorder(box) {
   }
 
   const off = c.border_offset ?? -1;
-  box.appendChild(s);
   pvCaption(box, c.border === false
     ? "borders are off" : `${c.border_width ?? 8}px thick, offset ${off}`);
 }
@@ -95,8 +120,7 @@ function drawBorder(box) {
 
 function drawTransparency(box) {
   const c = state.komorebi;
-  box.innerHTML = "";
-  const s = svg(200, 96);
+  const s = svg(box, 200, 96);
   rect(s, 1, 1, 198, 94, "pv-screen");
 
   rect(s, 12, 16, 84, 52, "pv-win pv-focused");
@@ -106,7 +130,6 @@ function drawTransparency(box) {
 
   text(s, 12, 86, "focused");
   text(s, 104, 86, "other");
-  box.appendChild(s);
   pvCaption(box, c.transparency === false
     ? "unfocused windows are not faded" : `unfocused windows sit at alpha ${alpha} of 255`);
 }
@@ -176,23 +199,26 @@ EASE.EaseInOutBounce = (t) =>
 // Shows the movement rather than plotting it. Runs once when you land here or
 // change a setting, and on Replay, never on its own.
 function drawEasing(box, style, duration) {
-  box.innerHTML = "";
   const fn = EASE[style] || EASE.Linear;
   const W = 220, H = 84;
-  const s = svg(W, H);
+  const s = svg(box, W, H);
   rect(s, 1, 1, W - 2, H - 2, "pv-screen");
 
   const from = 10, to = W - 78, y = 18, w = 68, h = 40;
   rect(s, from, y, w, h, "pv-ghost");
   rect(s, to, y, w, h, "pv-ghost");
-  const mover = rect(s, from, y, w, h, "pv-win pv-focused");
+  const mover = rect(s, from, y, w, h, "pv-win pv-focused pv-driven");
 
-  box.appendChild(s);
   const caption = pvCaption(box, `${style}, ${duration}ms`);
 
-  const replay = document.createElement("button");
-  replay.className = "ghost small";
-  replay.textContent = "Replay";
+  // Reused, or a redraw would leave a row of Replay buttons behind now that the
+  // box is no longer emptied first.
+  let replay = box.querySelector(".pv-replay");
+  if (!replay) {
+    replay = document.createElement("button");
+    replay.className = "ghost small pv-replay";
+    replay.textContent = "Replay";
+  }
   box.appendChild(replay);
 
   const reduced = document.documentElement.dataset.motion === "off"
@@ -212,7 +238,7 @@ function drawEasing(box, style, duration) {
     raf = requestAnimationFrame(step);
   }
 
-  replay.addEventListener("click", play);
+  replay.onclick = play;
   caption.textContent = reduced
     ? `${style}, ${duration}ms (motion reduced)` : `${style}, ${duration}ms`;
   play();
@@ -222,8 +248,7 @@ function drawEasing(box, style, duration) {
 function drawWorkArea(box) {
   const c = state.komorebi;
   const o = c.global_work_area_offset || {};
-  box.innerHTML = "";
-  const s = svg(200, 112);
+  const s = svg(box, 200, 112);
   rect(s, 1, 1, 198, 110, "pv-screen");
 
   const scale = 190 / 1920;
@@ -234,7 +259,6 @@ function drawWorkArea(box) {
   rect(s, left, top, Math.min(w, 190), Math.min(h, 102), "pv-area");
 
   const any = (o.left || o.top || o.right || o.bottom);
-  box.appendChild(s);
   pvCaption(box, any
     ? `left ${o.left || 0}, top ${o.top || 0}, width ${o.right || 0}, height ${o.bottom || 0}`
     : "nothing reserved here, so Windows decides the work area on its own");
@@ -244,8 +268,7 @@ function drawWorkArea(box) {
 
 function drawSpacing(box, which) {
   const c = state.komorebi;
-  box.innerHTML = "";
-  const s = svg(200, 110);
+  const s = svg(box, 200, 110);
   rect(s, 1, 1, 198, 108, "pv-screen");
 
   // Draw both gaps at once so the difference between them is the point.
@@ -261,7 +284,6 @@ function drawSpacing(box, which) {
   rect(s, inner.x + half + gap, inner.y, half, inner.h, "pv-win");
   if (which === "gap") rect(s, inner.x + half, inner.y, gap, inner.h, "pv-gapfill");
 
-  box.appendChild(s);
   pvCaption(box, which === "edge"
     ? `${c.default_workspace_padding ?? 0}px around the edge of the screen`
     : `${c.default_container_padding ?? 0}px between one window and the next`);
@@ -270,8 +292,7 @@ function drawSpacing(box, which) {
 /* ---------- how windows get hidden ---------- */
 
 function drawHiding(box, mode) {
-  box.innerHTML = "";
-  const s = svg(200, 96);
+  const s = svg(box, 200, 96);
   rect(s, 1, 1, 198, 94, "pv-screen");
   rect(s, 14, 14, 78, 50, "pv-win pv-focused");
 
@@ -291,7 +312,6 @@ function drawHiding(box, mode) {
   }
   text(s, 14, 84, "here");
   text(s, 106, 84, "gone");
-  box.appendChild(s);
   pvCaption(box, says);
 }
 
@@ -303,8 +323,7 @@ function drawStackbar(box) {
   const sb = state.komorebi.stackbar || {};
   const tabs = sb.tabs || {};
   const mode = sb.mode || "Never";
-  box.innerHTML = "";
-  const s = svg(220, 108);
+  const s = svg(box, 220, 108);
   rect(s, 1, 1, 218, 106, "pv-screen");
 
   const win = { x: 14, y: 14, w: 192, h: 74 };
@@ -312,8 +331,7 @@ function drawStackbar(box) {
 
   if (mode === "Never") {
     text(s, win.x + 8, win.y + 40, "no tabs");
-    box.appendChild(s);
-    pvCaption(box, "The mode is Never, so tabs can never appear. Set it to OnStack.");
+      pvCaption(box, "The mode is Never, so tabs can never appear. Set it to OnStack.");
     return;
   }
 
@@ -332,7 +350,6 @@ function drawStackbar(box) {
   }
 
   const clipped = (tabs.font_size ?? 12) > (sb.height ?? 20) - 4;
-  box.appendChild(s);
   pvCaption(box,
     `${sb.height ?? 20}px bar, ${tabs.width ?? 200}px tabs, ${tabs.font_size ?? 12}px text`
     + (clipped ? ". The text is too tall for the bar and will be clipped." : ""));

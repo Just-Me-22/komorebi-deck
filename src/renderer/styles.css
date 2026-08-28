@@ -638,14 +638,38 @@ button.has-key kbd {
 
 /* ---------- previews ---------- */
 .pv-box { margin-top: 14px; }
-.pv { width: 100%; max-width: 340px; height: auto; display: block; }
-.pv-screen { fill: var(--well); stroke: var(--rule); stroke-width: 1; }
-.pv-win { fill: var(--raise); stroke: var(--rule); stroke-width: 1; }
-.pv-focused { fill: var(--glow-dim); stroke: none; }
+/* Shapes survive a redraw, so a changed setting slides them into their new
+   place. The easing preview drives its own shape a frame at a time and opts
+   out, or every frame would start its own transition and fight the next. */
+.pv rect { transition: x 240ms ease, y 240ms ease, width 240ms ease, height 240ms ease,
+           fill 240ms ease, opacity 240ms ease; }
+.pv rect.pv-driven, :root[data-motion="off"] .pv rect { transition: none; }
+.pv {
+  width: 100%; max-width: 340px; height: auto; display: block;
+  border-radius: var(--radius); background: var(--void);
+}
+/* Mixed rather than picked from a token. The two palettes do not agree on which
+   way is up: --raise sits above --panel in the dark one and below it in the
+   light one, so a window filled with it stood out in dark and vanished in
+   light. Stepping towards the text colour moves away from the screen in both. */
+.pv-screen { fill: var(--well); stroke: var(--rule); stroke-width: 1; rx: 4; }
+.pv-win {
+  fill: color-mix(in srgb, var(--text) 13%, var(--well));
+  stroke: color-mix(in srgb, var(--text) 26%, var(--well));
+  stroke-width: 1; rx: 2.5;
+}
+.pv-focused {
+  fill: color-mix(in srgb, var(--glow) 34%, var(--well));
+  stroke: var(--glow); stroke-width: 1.2;
+}
 .pv-border { fill: none; }
-.pv-ghost { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 3 3; }
+.pv-ghost {
+  fill: none; stroke: var(--faint); stroke-width: 1;
+  stroke-dasharray: 3 3; opacity: 0.55; rx: 2.5;
+}
 .pv-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
 .pv-box .ghost { margin-top: 8px; }
+.pv-area { rx: 3; }
 .pv-cap {
   margin: 6px 0 0; max-width: 340px;
   font-size: 11px; line-height: 1.45; color: var(--dim);
@@ -703,8 +727,17 @@ button.has-key kbd {
   transition: transform 140ms ease;
 }
 .group.folded > h2::before { transform: rotate(-90deg); }
-.group.folded:not(.unfolded-by-search) > *:not(h2) { display: none; }
-.group.folded:not(.unfolded-by-search) > h2 { margin-bottom: 0; }
+/* Not while sliding: the content has to stay laid out so it can be seen moving
+   under the heading. Reverting display instead would have reset every .row from
+   flex to block for the length of the animation. */
+.group.folded:not(.unfolded-by-search):not(.sliding) > *:not(h2) { display: none; }
+.group.folded:not(.unfolded-by-search):not(.sliding) > h2 { margin-bottom: 0; }
+
+/* Overflow is hidden only while it moves. Left on, it would clip the things
+   that legitimately hang outside a section, the workspace menu on the live map
+   being the one that would have bitten. */
+.group.sliding { overflow: hidden; transition: height 220ms cubic-bezier(0.4, 0, 0.2, 1); }
+:root[data-motion="off"] .group > h2::before { transition: none; }
 
 /* ---------- finding a setting ---------- */
 .view-filter { float: right; margin-top: -34px; width: 220px; }
