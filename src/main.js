@@ -179,12 +179,14 @@ function run(file, args, opts = {}) {
   });
 }
 
+async function isRunning(image) {
+  const r = await run("tasklist", ["/FI", `IMAGENAME eq ${image}`, "/NH"]);
+  return r.stdout.toLowerCase().includes(image.toLowerCase());
+}
+
 ipcMain.handle("status:get", async () => {
   const out = {};
-  for (const [name, meta] of Object.entries(PROCESSES)) {
-    const r = await run("tasklist", ["/FI", `IMAGENAME eq ${meta.image}`, "/NH"]);
-    out[name] = r.stdout.toLowerCase().includes(meta.image.toLowerCase());
-  }
+  for (const [name, meta] of Object.entries(PROCESSES)) out[name] = await isRunning(meta.image);
   return out;
 });
 
@@ -207,15 +209,53 @@ async function restartService(name) {
     return { ok: r.ok, detail: r.ok ? "reloaded" : r.stderr };
   }
 
+  if (name === "komorebi") return restartKomorebi();
+
   await run("taskkill", ["/F", "/IM", meta.image]);
   await new Promise((r) => setTimeout(r, 2500));
   launch(exe);
   await new Promise((r) => setTimeout(r, 3500));
 
-  const check = await run("tasklist", ["/FI", `IMAGENAME eq ${meta.image}`, "/NH"]);
-  const running = check.stdout.toLowerCase().includes(meta.image.toLowerCase());
-  if (running && name === "komorebi") await resubscribe();
+  const running = await isRunning(meta.image);
   return { ok: running, detail: running ? "restarted" : "did not come back" };
+}
+
+const firstLine = (text) =>
+  String(text || "").split(/\r?\n/).map((l) => l.trim()).find(Boolean) || "";
+
+// komorebi has its own stop and start, and both do more than handling the
+// process would. Stop puts back every window komorebi had hidden on other
+// workspaces, which killing it does not: those stay cloaked and look lost.
+// Start hides the console window that komorebi.exe is otherwise given, since it
+// is a console program, and waits until it is actually up before returning.
+async function restartKomorebi() {
+  await run(P.komorebicExe, ["stop"]);
+
+  // Putting every hidden window back takes komorebi a moment, so it is waited
+  // for rather than cut off. A fixed delay short enough to feel responsive was
+  // also short enough to kill it halfway through restoring them.
+  for (let i = 0; i < 10 && (await isRunning("komorebi.exe")); i++) {
+    await new Promise((r) => setTimeout(r, 500));
+  }
+
+  // Stop asks komorebi over its socket, so one that has stopped listening never
+  // hears it and has to be handled the blunt way.
+  if (await isRunning("komorebi.exe")) {
+    await run("taskkill", ["/F", "/IM", "komorebi.exe"]);
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+
+  // Named explicitly, so komorebi reads the same file this app is editing even
+  // when that has been pointed somewhere else.
+  const r = await run(P.komorebicExe, ["start", "-c", P.komorebiConfig]);
+  const running = await isRunning("komorebi.exe");
+  if (running) await resubscribe();
+  return {
+    ok: running,
+    detail: running
+      ? "restarted"
+      : firstLine(r.stderr || r.stdout) || "did not come back",
+  };
 }
 
 // komorebi holds its subscribers in memory, so restarting it drops every one of
