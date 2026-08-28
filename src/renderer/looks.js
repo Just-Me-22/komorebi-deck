@@ -128,17 +128,24 @@ function colourCell(themeKey, label) {
   pick.className = "pick";
 
   if (paletteMode() === "Catppuccin") {
+    // A theme names the borders it cares about and leaves the rest to komorebi.
+    // Those used to read as Rosewater with a black chip beside it: the dropdown
+    // fell back to its first option while colourFor had no colour to show.
+    const mine = themeKey in state.komorebi.theme;
     const sw = document.createElement("span");
-    sw.className = "sw";
-    sw.style.background = colourFor(themeKey);
+    sw.className = "sw" + (mine ? "" : " unset");
+    if (mine) sw.style.background = colourFor(themeKey);
     const sel = document.createElement("select");
-    fillSelect(sel, CATPPUCCIN_NAMES, state.komorebi.theme[themeKey]);
+    fillSelect(sel, CATPPUCCIN_NAMES, mine ? state.komorebi.theme[themeKey] : null);
+    if (!mine) offerUnset(sel);
     sel.addEventListener("change", () => {
-      state.komorebi.theme[themeKey] = sel.value;
-      sw.style.background = palette()[sel.value];
+      if (sel.value) state.komorebi.theme[themeKey] = sel.value;
+      else delete state.komorebi.theme[themeKey];
+      sw.classList.toggle("unset", !sel.value);
+      sw.style.background = sel.value ? palette()[sel.value] : "";
       markDirty("komorebi");
       renderPreviews();
-      liveBorderColour(roleOf(themeKey), palette()[sel.value]);
+      if (sel.value) liveBorderColour(roleOf(themeKey), palette()[sel.value]);
     });
     pick.append(sw, sel);
   } else {

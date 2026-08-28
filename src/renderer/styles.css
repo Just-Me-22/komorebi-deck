@@ -270,6 +270,8 @@ input[type="color"]::-webkit-color-swatch { border: none; }
 .colour .meta em { font-size: 9.5px; font-style: normal; color: var(--faint); }
 .colour .pick { display: flex; align-items: center; gap: 9px; }
 .colour .sw { width: 20px; height: 20px; border: 1px solid var(--rule); flex: none; }
+/* Nothing chosen yet, so it shows as empty rather than as a colour. */
+.colour .sw.unset { background: none; border-style: dashed; }
 .colour select { flex: 1; min-width: 0; }
 .colour input[type="color"] { flex: none; }
 .colour .hex { font-size: 11px; color: var(--dim); text-transform: uppercase; }

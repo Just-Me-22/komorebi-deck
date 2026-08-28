@@ -336,9 +336,11 @@ function drawCurve(box, pts, duration, onChange) {
     raf = requestAnimationFrame(step);
   }
 
-  // Pointer capture rather than listeners on the document, so a handle dragged
-  // off the plot keeps following the cursor, and lostpointercapture to finish,
-  // which covers the pointer being cancelled as well as released.
+  // Pointer capture, so a handle dragged off the plot keeps following the
+  // cursor. Finishing hangs off pointerup and pointercancel and NOT off
+  // lostpointercapture: Chromium never fires the capture events for an SVG
+  // element, so a drag ended that way painted the new curve and then quietly
+  // failed to save it.
   grips.forEach((grip, i) => {
     grip.onpointerdown = (e) => {
       e.preventDefault();
@@ -355,12 +357,15 @@ function drawCurve(box, pts, duration, onChange) {
       };
       // Written once at the end rather than every frame: each write is a whole
       // undo step and a stringify of the config to see whether it changed.
-      grip.onlostpointercapture = () => {
+      const done = () => {
         grip.onpointermove = null;
-        grip.onlostpointercapture = null;
+        grip.onpointerup = null;
+        grip.onpointercancel = null;
         onChange([...p]);
         play();
       };
+      grip.onpointerup = done;
+      grip.onpointercancel = done;
     };
   });
 
