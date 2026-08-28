@@ -1,14 +1,11 @@
-/* Aurora. Deep blue-black with a periwinkle accent, rounded panels and a soft
-   gradient down the rail. Sora carries the headings, Instrument Sans does the
-   reading, Spline Sans Mono holds the config keys. All three ship in ./fonts so
-   the app looks the same with no network. */
+/* Aurora. Deep blue-black with a periwinkle accent and rounded panels.
 
-@font-face {
-  font-family: "Sora";
-  src: url("fonts/sora.woff2") format("woff2");
-  font-weight: 300 700;
-  font-display: block;
-}
+   Two typefaces, not three. Instrument Sans does all the reading and all the
+   headings, which are set apart by weight and letterspacing rather than by a
+   second face; Spline Sans Mono holds anything you would type into the config
+   yourself, so a key or a value always looks like one. Both ship in ./fonts, so
+   it looks the same with no network and nothing is fetched at runtime. */
+
 @font-face {
   font-family: "Instrument Sans";
   src: url("fonts/instrument-sans.woff2") format("woff2");
@@ -32,7 +29,7 @@
 
   --text: #e6e9f0;
   --dim: #97a0b3;
-  --faint: #6d7688;
+  --faint: #828998;
 
   --glow: #6d8cff;
   --glow-dim: #40548f;
@@ -46,8 +43,7 @@
   --radius: 9px;
   --radius-lg: 13px;
 
-  --display: "Sora", ui-sans-serif, system-ui, sans-serif;
-  --sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --ui: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --mono: "Spline Sans Mono", ui-monospace, Consolas, monospace;
 }
 
@@ -63,7 +59,7 @@
   --rule-soft: #e8ebf1;
   --text: #171a21;
   --dim: #4e5665;
-  --faint: #79808f;
+  --faint: #636975;
   --warn: #8a5a06;
   --bad: #b4322c;
   --good: #0f7a34;
@@ -113,7 +109,7 @@ body {
   gap: 22px;
 }
 .brand {
-  font-family: var(--display);
+  font-family: var(--ui);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -141,7 +137,7 @@ nav { display: flex; flex-direction: column; }
 
 .status { margin-top: auto; display: flex; flex-direction: column; padding: 0 10px; }
 .status-title {
-  font-family: var(--display);
+  font-family: var(--ui);
   font-size: 8.5px;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -170,7 +166,7 @@ main { grid-area: main; overflow-y: auto; padding: 26px 30px 34px; }
 
 header { margin-bottom: 22px; }
 header h1 {
-  font-family: var(--display);
+  font-family: var(--ui);
   font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -190,7 +186,7 @@ header p { margin: 0; color: var(--dim); font-size: 12.5px; line-height: 1.55; m
   display: flex;
   align-items: center;
   gap: 10px;
-  font-family: var(--display);
+  font-family: var(--ui);
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -294,7 +290,7 @@ input[type="color"]::-webkit-color-swatch { border: none; }
   background: var(--well); border: 1px solid var(--rule);
   padding: 8px 14px; cursor: pointer; color: var(--dim);
 }
-.mon strong { font-family: var(--display); font-size: 10px; font-weight: 600; letter-spacing: 0.06em; }
+.mon strong { font-family: var(--ui); font-size: 10px; font-weight: 600; letter-spacing: 0.06em; }
 .mon em { font-style: normal; font-size: 10px; color: var(--faint); }
 .mon:hover { border-color: var(--glow-dim); color: var(--text); }
 .mon.active { border-color: var(--glow); color: var(--glow); }
@@ -310,7 +306,7 @@ input[type="color"]::-webkit-color-swatch { border: none; }
 }
 .ws-head { padding-bottom: 5px; }
 .ws-head span {
-  font-family: var(--display); font-size: 8.5px; font-weight: 600;
+  font-family: var(--ui); font-size: 8.5px; font-weight: 600;
   letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint);
 }
 .ws .idx { font-size: 11px; color: var(--faint); text-align: right; }
@@ -350,7 +346,7 @@ input.bad-cmd { border-color: var(--warn); }
 .cheat { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; }
 .cheat-group h3 {
   display: flex; align-items: center; gap: 8px;
-  font-family: var(--display); font-size: 9px; font-weight: 600;
+  font-family: var(--ui); font-size: 9px; font-weight: 600;
   letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--glow); margin: 0 0 7px;
 }
@@ -367,7 +363,7 @@ input.bad-cmd { border-color: var(--warn); }
 .islands { display: flex; flex-direction: column; gap: 14px; }
 .island-card { border: 1px solid var(--rule); padding: 12px 14px 14px; }
 .island-card h3 {
-  font-family: var(--display); font-size: 9.5px; font-weight: 600;
+  font-family: var(--ui); font-size: 9.5px; font-weight: 600;
   letter-spacing: 0.08em; color: var(--glow); margin: 0 0 10px;
 }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -420,7 +416,7 @@ input.bad-cmd { border-color: var(--warn); }
 .lr-card { border: 1px solid var(--rule); padding: 11px 13px; }
 .lr-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
 .lr-head strong {
-  font-family: var(--display); font-size: 10px; font-weight: 600;
+  font-family: var(--ui); font-size: 10px; font-weight: 600;
   letter-spacing: 0.05em; color: var(--glow);
 }
 .lr-row { display: grid; grid-template-columns: 70px 1fr 180px 26px; gap: 8px; align-items: center; margin-bottom: 6px; }
@@ -454,7 +450,7 @@ input.bad-cmd { border-color: var(--warn); }
   padding: 0 8px 5px; position: sticky; top: 0; background: var(--panel);
 }
 .app-head span {
-  font-family: var(--display); font-size: 8.5px; font-weight: 600;
+  font-family: var(--ui); font-size: 8.5px; font-weight: 600;
   letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--faint); text-align: center;
 }
@@ -479,7 +475,7 @@ input.bad-cmd { border-color: var(--warn); }
 }
 .explain h4 {
   margin: 0; flex: none;
-  font-family: var(--display); font-size: 9px; font-weight: 600;
+  font-family: var(--ui); font-size: 9px; font-weight: 600;
   letter-spacing: 0.08em; text-transform: uppercase; color: var(--glow);
 }
 .explain p {
@@ -510,7 +506,7 @@ input.bad-cmd { border-color: var(--warn); }
   background: var(--well); border: 1px solid var(--rule);
   color: var(--dim); padding: 5px 10px; cursor: pointer; font-size: 11.5px;
 }
-.map-wsb em { font-style: normal; font-size: 9.5px; color: var(--glow-dim); }
+.map-wsb em { font-style: normal; font-size: 9.5px; color: var(--dim); }
 .map-wsb.empty { color: var(--faint); }
 .map-wsb.focused { border-style: dashed; }
 .map-wsb:hover { border-color: var(--glow-dim); color: var(--text); }
@@ -544,7 +540,7 @@ input.bad-cmd { border-color: var(--warn); }
 .ws-field input[type="number"] { text-align: left; }
 .map-actions h3, .map-history h3 {
   display: flex; align-items: center; gap: 10px;
-  font-family: var(--display); font-size: 9px; font-weight: 600;
+  font-family: var(--ui); font-size: 9px; font-weight: 600;
   letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint);
   margin: 20px 0 10px;
 }
@@ -621,7 +617,7 @@ input.bad-cmd { border-color: var(--warn); }
   background: var(--raise); padding: 10px 14px; margin-bottom: 12px;
 }
 .map-stopped strong {
-  font-family: var(--display); font-size: 10px; font-weight: 600;
+  font-family: var(--ui); font-size: 10px; font-weight: 600;
   letter-spacing: 0.06em; text-transform: uppercase; color: var(--bad);
 }
 .map-stopped span { flex: 1; font-size: 11.5px; color: var(--dim); }
@@ -711,7 +707,7 @@ button.has-key kbd {
    is still doing something. The row says whose value it is showing. */
 .row.inherited .lbl em::after {
   content: " · komorebi's default";
-  color: var(--glow-dim);
+  color: var(--glow);
 }
 .row.inherited select.is-inherited { color: var(--dim); border-style: dashed; }
 .row.inherited input[type="number"] { border-style: dashed; }
@@ -776,7 +772,7 @@ button.has-key kbd {
 .pal-row.on { background: var(--glow); color: var(--void); }
 .pal-label { font-size: 12.5px; }
 .pal-key { font-size: 10px; color: var(--faint); font-family: var(--mono); }
-.pal-where { font-size: 10px; color: var(--glow-dim); text-align: right; }
+.pal-where { font-size: 10px; color: var(--dim); text-align: right; }
 .pal-row.on .pal-key, .pal-row.on .pal-where { color: var(--void); opacity: 0.72; }
 .palette-foot {
   display: flex; align-items: center; gap: 6px; padding: 9px 18px;
@@ -793,7 +789,7 @@ button.has-key kbd {
 .lay-screen { fill: var(--well); stroke: var(--rule); stroke-width: 1; }
 .lay-cell { fill: var(--raise); stroke: var(--glow-dim); stroke-width: 1.5; rx: 2; }
 #layout-designer h3 {
-  font-family: var(--display); font-size: 9px; font-weight: 600;
+  font-family: var(--ui); font-size: 9px; font-weight: 600;
   letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint);
   margin: 18px 0 4px;
 }
@@ -820,7 +816,7 @@ button.has-key kbd {
 .setup-path { font-size: 10.5px; color: var(--dim); max-width: 44ch; word-break: break-all; }
 .setup-row.gone .setup-path { color: var(--bad); }
 
-.pick-row .where { font-size: 10px; color: var(--glow-dim); text-align: right; }
+.pick-row .where { font-size: 10px; color: var(--dim); text-align: right; }
 .pick-row .where.off { color: var(--faint); }
 #pick-tabs { border-bottom: 1px solid var(--rule); padding-bottom: 12px; }
 .pick-row .title {
@@ -848,7 +844,7 @@ button.has-key kbd {
 }
 .snap.active { border-color: var(--glow); }
 .snap.active .nm { color: var(--glow); }
-.snap.active .when { color: var(--glow-dim); }
+.snap.active .when { color: var(--glow); }
 .snap .nm { flex: 1; font-size: 12px; color: var(--text); }
 .snap .when { font-size: 10.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
 .snap button {
@@ -933,13 +929,13 @@ button.primary.dirty::after, button.accent.dirty::after {
   padding: 14px 18px; border-bottom: 1px solid var(--rule);
 }
 .modal-head h2 {
-  font-family: var(--display); font-size: 12px; font-weight: 600;
+  font-family: var(--ui); font-size: 12px; font-weight: 600;
   letter-spacing: 0.04em; margin: 0;
 }
 .diff-box { overflow-y: auto; padding: 14px 18px; }
 .diff-group h3 {
   display: flex; align-items: center; gap: 8px;
-  font-family: var(--display); font-size: 9px; font-weight: 600;
+  font-family: var(--ui); font-size: 9px; font-weight: 600;
   letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--glow); margin: 14px 0 7px;
 }
@@ -1017,20 +1013,16 @@ textarea.bad-yaml { border-color: var(--bad); }
    rules above without touching any of them.
    ============================================================ */
 
-body { font-family: var(--sans); font-size: 13.5px; }
+body { font-family: var(--ui); font-size: 13.5px; }
 
 /* ---------- type ---------- */
 .brand, header h1, .group > h2, .group > h3, .status-title, .ws-head span,
 .app-head span, .island-card h3, .lr-head strong, .cheat-group h3,
 .diff-group h3, .modal-head h2, .map-actions h3, .map-history h3,
 .map-stopped strong, .explain h4, .mon strong {
-  font-family: var(--display);
+  font-family: var(--ui);
 }
-header h1 {
-  font-size: 21px; font-weight: 650; letter-spacing: -0.025em;
-  background: linear-gradient(94deg, var(--text) 30%, var(--glow));
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
+header h1 { font-size: 21px; font-weight: 650; letter-spacing: -0.025em; }
 .brand {
   font-size: 12.5px; font-weight: 650; letter-spacing: -0.01em;
   text-transform: none; color: var(--text);

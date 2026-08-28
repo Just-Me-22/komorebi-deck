@@ -356,7 +356,7 @@ function overview(mon, spaces) {
         class: `map-mini ${w.kind}`,
       });
       const t = svgEl("title");
-      t.textContent = `${w.exe} — drag onto another workspace to send it there`;
+      t.textContent = `${w.exe}, drag onto another workspace to send it there`;
       r.appendChild(t);
       r.addEventListener("pointerdown", (e) => {
         e.stopPropagation();
@@ -1015,7 +1015,7 @@ function selectedActions(wins, wsIndex, here) {
 
   const who = document.createElement("p");
   who.className = "note";
-  who.textContent = `${win.exe} — ${win.title}`;
+  who.textContent = `${win.exe}  ${win.title}`;
   wrap.appendChild(who);
 
   const bar = document.createElement("div");
