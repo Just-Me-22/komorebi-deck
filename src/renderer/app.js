@@ -929,6 +929,8 @@ async function save() {
 
 $("#btn-save").addEventListener("click", save);
 $("#btn-reload").addEventListener("click", loadAll);
+$("#btn-undo").addEventListener("click", undo);
+$("#btn-redo").addEventListener("click", redo);
 
 $("#btn-apply").addEventListener("click", async () => {
   const changed = new Set(state.dirty);
