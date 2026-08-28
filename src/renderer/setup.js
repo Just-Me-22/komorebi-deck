@@ -49,7 +49,7 @@ function showSetup() {
     const [name, why] = SETUP_LABELS[r.key] || [r.key, ""];
     const row = document.createElement("div");
     row.className = "setup-row" + (r.exists ? " ok" : " gone");
-    row.innerHTML = `<i></i><span class="setup-name">${name}<em>${why}</em></span>`
+    row.innerHTML = `<span class="setup-name">${name}<em>${why}</em></span>`
       + `<span class="setup-path">${r.path || "not found"}</span>`;
 
     const locate = document.createElement("button");

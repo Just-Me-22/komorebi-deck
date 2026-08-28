@@ -81,8 +81,7 @@ function renderTools(focus) {
       && have === channels.nightly && have !== channels.stable);
     const behind = have && newest && !onNightly && olderThan(have, newest);
 
-    row.innerHTML = `<i></i>`
-      + `<span class="tool-name">${tool.label}<em>${tool.what}</em></span>`
+    row.innerHTML = `<span class="tool-name">${tool.label}<em>${tool.what}</em></span>`
       + `<span class="tool-ver">${versionLine(tool, have, channels, behind, onNightly)}</span>`;
 
     const acts = document.createElement("div");

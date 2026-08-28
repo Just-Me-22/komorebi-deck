@@ -120,6 +120,14 @@ npm run build
 Puts a zip in `dist/`. Pushing a `v*` tag does the same on GitHub and attaches
 it to the release.
 
+## Status
+
+Whether something is running or installed is shown as a rule down the left edge
+of its row rather than a coloured dot. A dot puts the whole message in the
+colour, so it says nothing at all to anyone who cannot see that colour. Working
+is not a colour here, just a slightly stronger line; only something you might
+want to do about gets one.
+
 ## Folding a section
 
 Every section heading folds it away, and what you fold is remembered. Searching
