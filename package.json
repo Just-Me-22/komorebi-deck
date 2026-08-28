@@ -20,7 +20,7 @@
     "appId": "dev.wmcontrol.app",
     "productName": "WM Control",
     "directories": { "output": "dist" },
-    "files": ["src/**/*", "package.json"],
+    "files": ["src/**/*", "build/icon.ico", "package.json"],
     "asarUnpack": ["**/*.ps1"],
     "win": {
       "icon": "build/icon.ico",

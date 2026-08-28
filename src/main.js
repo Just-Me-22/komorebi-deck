@@ -41,6 +41,10 @@ function createWindow() {
   win.on("closed", () => { win = null; });
 }
 
+// Windows groups taskbar buttons by this and takes the icon from whatever it
+// resolves to. Without it a dev run is just another electron.exe.
+app.setAppUserModelId("dev.wmcontrol.app");
+
 app.whenReady().then(() => {
   createWindow();
   // Compiling the C# inside mover.ps1 takes about two seconds. Doing it now

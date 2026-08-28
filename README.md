@@ -93,6 +93,16 @@ the mark at seven sizes and packs them. Edit the artwork in that script rather
 than the .ico. The same mark is drawn inline in the rail, where it follows
 whatever accent you picked; the packaged icon cannot, so it keeps the default.
 
+A zip has no installer, so nothing puts the app in your Start Menu. This does:
+
+```bash
+powershell -ExecutionPolicy Bypass -File build\make-shortcut.ps1 -Desktop
+```
+
+Drop `-Desktop` for Start Menu only, add `-Remove` to take them away again. The
+small arrow Windows draws on a shortcut is the shell marking it as one; every
+shortcut has it and it is a system-wide setting, not something an app sets.
+
 ## Building a release
 
 ```bash
