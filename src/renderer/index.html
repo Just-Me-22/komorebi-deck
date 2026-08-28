@@ -132,6 +132,14 @@
       <p class="note">Per workspace you can override the global floating behaviour and the gaps. <strong>Inherit</strong> leaves the global setting in charge.</p>
     </div>
     <div class="group">
+      <h2>Shape of a layout</h2>
+      <p class="note">Where a layout puts its splits, per workspace. komorebi's own
+        custom layouts are marked end of life in the schema, so this sets
+        <strong>layout_options</strong>, which is the supported way to do the same thing.</p>
+      <div id="layout-designer"></div>
+    </div>
+
+    <div class="group">
       <h2>Layout rules</h2>
       <p class="note">Switch layout automatically as windows open on a workspace.</p>
       <div id="layout-rules" class="lr-list"></div>
@@ -391,12 +399,22 @@
 <footer class="bar">
   <span id="msg" class="msg"></span>
   <div class="actions">
+    <button class="ghost icon" id="btn-undo" disabled>Undo</button>
+    <button class="ghost icon" id="btn-redo" disabled>Redo</button>
     <button class="ghost" id="btn-diff">Preview changes</button>
     <button class="ghost" id="btn-reload">Reload from disk</button>
     <button class="primary" id="btn-save">Save</button>
     <button class="accent" id="btn-apply">Save and apply</button>
   </div>
 </footer>
+
+<div class="modal palette" id="palette" hidden>
+  <div class="palette-card">
+    <input type="search" id="palette-input" placeholder="Jump to a setting, a tab, or something to do" autocomplete="off">
+    <div id="palette-list" class="palette-list"></div>
+    <div class="palette-foot"><kbd>up</kbd><kbd>down</kbd> to move <kbd>enter</kbd> to pick <kbd>esc</kbd> to close</div>
+  </div>
+</div>
 
 <div class="modal" id="setup-modal" hidden>
   <div class="modal-card">
@@ -449,6 +467,8 @@
 <script src="rules.js"></script>
 <script src="map.js"></script>
 <script src="setup.js"></script>
+<script src="search.js"></script>
+<script src="layout.js"></script>
 <script src="settings.js"></script>
 <script src="explain.js"></script>
 </body>

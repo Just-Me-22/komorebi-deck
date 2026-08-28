@@ -15,6 +15,7 @@ window.KENUM = {
   HIDING: ["Hide", "Minimize", "Cloak"],
   MONOCLE_FOCUS: ["Cycle", "NoOp"],
   EASING: ["Linear", "EaseInSine", "EaseOutSine", "EaseInOutSine", "EaseInQuad", "EaseOutQuad", "EaseInOutQuad", "EaseInCubic", "EaseOutCubic", "EaseInOutCubic", "EaseInQuart", "EaseOutQuart", "EaseInOutQuart", "EaseInQuint", "EaseOutQuint", "EaseInOutQuint", "EaseInExpo", "EaseOutExpo", "EaseInOutExpo", "EaseInCirc", "EaseOutCirc", "EaseInOutCirc", "EaseInBack", "EaseOutBack", "EaseInOutBack", "EaseInElastic", "EaseOutElastic", "EaseInOutElastic", "EaseInBounce", "EaseOutBounce", "EaseInOutBounce"],
+  AXES: ["Horizontal", "Vertical", "HorizontalAndVertical"],
   IDENTIFIERS: ["Exe", "Class", "Title", "Path"],
   MATCH_STRATEGIES: ["Legacy", "Equals", "StartsWith", "EndsWith", "Contains", "Regex", "DoesNotEndWith", "DoesNotStartWith", "DoesNotEqual", "DoesNotContain"],
 };

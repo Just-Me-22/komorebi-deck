@@ -574,6 +574,7 @@ const SCHEMA_ENUMS = {
   STACKBAR_LABELS: "StackbarLabel",
   HIDING: "HidingBehaviour",
   MONOCLE_FOCUS: "MonocleFocusBehaviour",
+  AXES: "Axis",
   EASING: "AnimationStyle",
   IDENTIFIERS: "ApplicationIdentifier",
   MATCH_STRATEGIES: "MatchingStrategy",

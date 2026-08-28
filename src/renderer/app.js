@@ -96,12 +96,18 @@ function dressNumber(input, withSlider = true) {
   box.append(input, arrows);
   wrap.appendChild(box);
 
+  // Loading a config sets these values in code, which fires no event, so the
+  // slider has to be told separately or it sits wherever it started.
   const follow = () => { if (slider && input.value !== "") slider.value = input.value; };
   input.addEventListener("input", follow);
   input.addEventListener("change", follow);
+  input.syncSlider = follow;
   follow();
   return wrap;
 }
+
+const syncNumbers = () =>
+  $$('input[type="number"]').forEach((el) => el.syncSlider && el.syncSlider());
 
 // An empty box is showing its placeholder, which is the value it inherits, so
 // that is what a nudge starts from.
@@ -144,21 +150,109 @@ async function loadAll() {
   const y = await window.wm.read("yasbConfig");
   state.yasbConfig = y.text;
 
+  await loadAppRules().catch(() => msg("applications.json could not be read", "warn"));
+  renderAll();
+  await loadRaw(state.rawKind);
+  clearDirty();
+  resetHistory();
+  msg("Loaded from disk");
+}
+
+// Everything that draws from `state`, in one place, so undo has something to
+// call after it puts an older version back.
+function renderAll() {
   renderKomorebi();
   renderShortcuts();
   renderIslands();
   if (typeof renderLooks === "function") renderLooks();
-  await loadAppRules().catch(() => msg("applications.json could not be read", "warn"));
   if (typeof renderMonitors === "function") renderMonitors();
   renderIgnoreRules();
+  if (typeof renderLayoutDesigner === "function") renderLayoutDesigner();
   if (typeof renderLayoutRules === "function") renderLayoutRules();
   if (typeof renderWorkspaceRules === "function") renderWorkspaceRules();
   if (typeof renderWidgetOptions === "function") renderWidgetOptions();
   if (typeof renderCheatSheet === "function") renderCheatSheet();
   if (typeof renderPreviews === "function") renderPreviews();
-  await loadRaw(state.rawKind);
-  clearDirty();
-  msg("Loaded from disk");
+  // Drawn now rather than when its tab is first opened, so its rows can be
+  // found by the palette without having been there once already.
+  if (typeof renderSettings === "function") renderSettings();
+}
+
+/* ---------- 10. undo and redo ---------- */
+
+/* A step is a copy of everything `state` holds that can be edited. That is
+   heavy-handed compared with recording each change, but a change here can be a
+   checkbox or a whole workspace being deleted, and there is no shape that
+   covers both. Copies are a few kilobytes, so sixty of them cost less than
+   getting the clever version subtly wrong. */
+
+const HISTORY_LIMIT = 60;
+const edits = { steps: [], at: -1, restoring: false, timer: null };
+
+const snapshotState = () => JSON.stringify({
+  komorebi: state.komorebi,
+  whkd: state.whkd,
+  bindings: state.bindings,
+  yasbConfig: state.yasbConfig,
+  appRules: state.appRules,
+});
+
+function resetHistory() {
+  edits.steps = [snapshotState()];
+  edits.at = 0;
+  paintHistory();
+}
+
+// Typing in a text field fires per keystroke, and a step per letter makes undo
+// useless, so edits that arrive together become one step.
+function recordHistory() {
+  if (edits.restoring) return;
+  clearTimeout(edits.timer);
+  edits.timer = setTimeout(() => {
+    const now = snapshotState();
+    if (now === edits.steps[edits.at]) return;
+    edits.steps = edits.steps.slice(0, edits.at + 1);
+    edits.steps.push(now);
+    if (edits.steps.length > HISTORY_LIMIT) edits.steps.shift();
+    edits.at = edits.steps.length - 1;
+    paintHistory();
+  }, 350);
+}
+
+function stepHistory(to) {
+  clearTimeout(edits.timer);
+  if (to < 0 || to >= edits.steps.length) return false;
+  edits.at = to;
+  const step = JSON.parse(edits.steps[to]);
+  edits.restoring = true;
+  Object.assign(state, step);
+  renderAll();
+  for (const kind of ["komorebi", "whkd", "yasbConfig", "appRules"]) markDirty(kind);
+  edits.restoring = false;
+  paintHistory();
+  return true;
+}
+
+function undo() {
+  if (!stepHistory(edits.at - 1)) return msg("Nothing left to undo");
+  msg(`Undone. ${edits.at} step${edits.at === 1 ? "" : "s"} back to the loaded file.`, "ok");
+}
+
+function redo() {
+  const room = edits.steps.length - 1 - edits.at;
+  if (!stepHistory(edits.at + 1)) return msg("Nothing to redo");
+  msg(`Redone. ${room - 1} more available.`, "ok");
+}
+
+function paintHistory() {
+  const back = $("#btn-undo");
+  const fwd = $("#btn-redo");
+  if (!back || !fwd) return;
+  back.disabled = edits.at <= 0;
+  fwd.disabled = edits.at >= edits.steps.length - 1;
+  back.title = back.disabled ? "Nothing to undo" : `Undo (${edits.at} available)`;
+  fwd.title = fwd.disabled
+    ? "Nothing to redo" : `Redo (${edits.steps.length - 1 - edits.at} available)`;
 }
 
 /* ---------- window manager ---------- */
@@ -188,6 +282,7 @@ function renderKomorebi() {
     else if (el.tagName !== "SELECT") el.value = c[key];
   }
 
+  syncNumbers();
   renderWorkspaces();
 }
 
@@ -320,6 +415,7 @@ function markDirty(kind) {
   else if (currentOf(kind) === pristine[kind]) state.dirty.delete(kind);
   else state.dirty.add(kind);
   paintDirty();
+  recordHistory();
 }
 
 function paintDirty() {
@@ -1090,10 +1186,11 @@ $$(".tab").forEach((b) => b.addEventListener("click", () => {
 }));
 
 document.addEventListener("keydown", (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-    e.preventDefault();
-    save();
-  }
+  if (!(e.ctrlKey || e.metaKey)) return;
+  const key = e.key.toLowerCase();
+  if (key === "s") { e.preventDefault(); save(); }
+  else if (key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+  else if (key === "y" || (key === "z" && e.shiftKey)) { e.preventDefault(); redo(); }
 });
 
 // Switching workspace hides everything komorebi manages on the one you left,
@@ -1110,14 +1207,16 @@ $$('input[type="number"]').forEach((el) => dressNumber(el));
 // The dropdowns are built from KENUM, so what this komorebi accepts has to be
 // known before anything is drawn, and what is missing has to be known before
 // the first read fails.
-(async () => {
+// app.js is loaded before setup.js and search.js, so the start-up work waits
+// for the whole page rather than running the moment this file is parsed.
+window.addEventListener("DOMContentLoaded", async () => {
   const [live] = await Promise.all([applySchema(), checkSetup()]);
   if (live?.changed.length) {
     msg(`Read the options from your komorebi${live.version ? ` ${live.version}` : ""}, `
       + `${live.changed.length} differ from the ones shipped with this app.`, "ok");
   }
   await loadAll().catch((e) => msg(String(e), "err"));
-})();
+});
 renderSnapshots();
 refreshStatus();
 setInterval(refreshStatus, 5000);

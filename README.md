@@ -95,11 +95,23 @@ npm run build
 Puts a zip in `dist/`. Pushing a `v*` tag does the same on GitHub and attaches
 it to the release.
 
+## Finding things
+
+**Ctrl+K** opens a palette over every setting in every tab, plus the tabs
+themselves and what the footer and the rail do. Arrows to move, enter to pick,
+and it jumps to the setting and marks it so you can see where you landed.
+
+The box in the corner of the Window manager, Looks and Settings headers filters
+that tab in place instead.
+
+**Ctrl+Z** and **Ctrl+Y** undo and redo, sixty steps deep, covering everything
+you can change including whole workspaces and rules.
+
 ## Not done yet
 
 - Reordering widgets within a YASB island (you can only remove them)
-- Custom layouts, and the `CubicBezier` animation style komorebi supports
-- Undo and redo
+- The `CubicBezier` animation style komorebi supports
+- An application icon
 
 ## Licence
 

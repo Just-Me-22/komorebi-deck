@@ -208,6 +208,7 @@ function selectMonitor(i) {
   state.monitor = i;
   renderWorkspaces();
   renderMonitors();
+  renderLayoutDesigner();
   renderLayoutRules();
   renderWorkspaceRules();
 }
