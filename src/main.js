@@ -17,7 +17,7 @@ const FILES = {
   appRules: { get path() { return P.appRules; }, format: "json", empty: "{}" },
 };
 
-const STORE = path.join(require("node:os").homedir(), ".config", "wm-control");
+const STORE = path.join(require("node:os").homedir(), ".config", "komorebi-deck");
 const SNAPSHOT_DIR = path.join(STORE, "snapshots");
 const PROFILE_DIR = path.join(STORE, "profiles");
 const ACTIVE_FILE = path.join(PROFILE_DIR, "active.json");
@@ -31,7 +31,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     backgroundColor: "#0e1117",
-    title: "WM Control",
+    title: "Komorebi Deck",
     icon: path.join(__dirname, "..", "build", "icon.ico"),
     autoHideMenuBar: true,
     alwaysOnTop: true,
@@ -43,7 +43,7 @@ function createWindow() {
 
 // Windows groups taskbar buttons by this and takes the icon from whatever it
 // resolves to. Without it a dev run is just another electron.exe.
-app.setAppUserModelId("dev.wmcontrol.app");
+app.setAppUserModelId("dev.komorebideck.app");
 
 app.whenReady().then(() => {
   createWindow();
@@ -445,7 +445,7 @@ ipcMain.handle("health:check", async () => {
 // komorebi pushes a JSON line down a named pipe every time something changes,
 // which is how the bar stays in sync. Anything arriving is treated as "state
 // moved", so this does not depend on the event payload shape.
-const PIPE_NAME = "wm-control-events";
+const PIPE_NAME = "komorebi-deck-events";
 let pipeServer = null;
 
 function startEvents() {

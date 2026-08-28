@@ -176,6 +176,7 @@ function renderAll() {
   // Drawn now rather than when its tab is first opened, so its rows can be
   // found by the palette without having been there once already.
   if (typeof renderSettings === "function") renderSettings();
+  if (typeof setupGroups === "function") setupGroups();
 }
 
 /* ---------- 10. undo and redo ---------- */
@@ -1197,7 +1198,7 @@ document.addEventListener("keydown", (e) => {
 // including this window. Ignored windows are never hidden, so this asks to be
 // left alone. It lasts until komorebi restarts; Settings can make it stick.
 async function stayVisible() {
-  const r = await window.wm.komorebic(["ignore-rule", "title", "WM Control"]);
+  const r = await window.wm.komorebic(["ignore-rule", "title", "Komorebi Deck"]);
   return r.ok;
 }
 

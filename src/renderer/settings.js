@@ -123,13 +123,13 @@ function renderSettings() {
     + '<em>komorebi ignore rule on the title</em></span>';
   const stayBtn = document.createElement("button");
   const already = (state.komorebi?.ignore_rules || [])
-    .some((r) => r && r.kind === "Title" && r.id === "WM Control");
+    .some((r) => r && r.kind === "Title" && r.id === "Komorebi Deck");
   stayBtn.className = "ghost";
   stayBtn.textContent = already ? "Already permanent" : "Make it permanent";
   stayBtn.disabled = already;
   stayBtn.addEventListener("click", () => {
     const rules = (state.komorebi.ignore_rules = state.komorebi.ignore_rules || []);
-    rules.push({ kind: "Title", id: "WM Control", matching_strategy: "Equals" });
+    rules.push({ kind: "Title", id: "Komorebi Deck", matching_strategy: "Equals" });
     markDirty("komorebi");
     if (typeof renderIgnoreRules === "function") renderIgnoreRules();
     msg("Added to your ignore rules. Save to keep it.", "ok");
@@ -159,6 +159,7 @@ function renderSettings() {
   bar.className = "sc-toolbar reset";
   bar.appendChild(reset);
   box.appendChild(bar);
+  if (typeof setupGroups === "function") setupGroups();
 }
 
 /* ---------- accent ---------- */

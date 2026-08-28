@@ -682,6 +682,19 @@ button.has-key kbd {
 .pick-row .exe { font-size: 12px; color: var(--text); display: flex; flex-direction: column; gap: 1px; }
 .pick-row .exe small { font-size: 10px; color: var(--faint); }
 .pick-row .exe small em { font-style: normal; color: var(--warn); }
+/* ---------- folding a section ---------- */
+.group > h2 { cursor: pointer; user-select: none; }
+.group > h2:hover { color: var(--dim); }
+.group > h2::before {
+  content: ""; flex: none;
+  border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
+  transition: transform 140ms ease;
+}
+.group.folded > h2::before { transform: rotate(-90deg); }
+.group.folded:not(.unfolded-by-search) > *:not(h2) { display: none; }
+.group.folded:not(.unfolded-by-search) > h2 { margin-bottom: 0; }
+
 /* ---------- finding a setting ---------- */
 .view-filter { float: right; margin-top: -34px; width: 220px; }
 .row.filtered-out, .group.filtered-out { display: none; }

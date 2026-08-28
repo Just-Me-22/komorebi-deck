@@ -12,7 +12,14 @@ const path = require("node:path");
 const os = require("node:os");
 
 const home = os.homedir();
-const STORE = path.join(home, ".config", "wm-control");
+const STORE = path.join(home, ".config", "komorebi-deck");
+
+// The app was called WM Control until it was renamed. Anything already saved
+// under the old name is moved rather than abandoned, once, on first start.
+const OLD_STORE = path.join(home, ".config", "wm-control");
+try {
+  if (fs.existsSync(OLD_STORE) && !fs.existsSync(STORE)) fs.renameSync(OLD_STORE, STORE);
+} catch {}
 const OVERRIDES = path.join(STORE, "paths.json");
 
 const PF = process.env.ProgramFiles || "C:\\Program Files";

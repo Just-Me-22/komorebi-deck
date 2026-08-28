@@ -154,6 +154,7 @@ function choosePalette(i) {
 // looks like every other row once you get there, so it is marked briefly.
 function jumpTo(entry) {
   document.querySelector(`.tab[data-view="${entry.view}"]`)?.click();
+  unfoldFor(entry.row);
   entry.row.scrollIntoView({ block: "center", behavior: "smooth" });
   entry.row.classList.remove("found");
   void entry.row.offsetWidth;
@@ -215,7 +216,11 @@ function filterView(name, q) {
   view.querySelectorAll(".group").forEach((group) => {
     const rows = group.querySelectorAll(".row");
     const hidden = group.querySelectorAll(".row.filtered-out");
-    group.classList.toggle("filtered-out", rows.length > 0 && rows.length === hidden.length);
+    const gone = rows.length > 0 && rows.length === hidden.length;
+    group.classList.toggle("filtered-out", gone);
+    // Folded sections would hide their own matches, so a search opens them for
+    // as long as it runs.
+    showWhileFiltering(group, t.length > 0 && !gone);
   });
 }
 

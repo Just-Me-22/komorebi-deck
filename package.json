@@ -1,5 +1,5 @@
 {
-  "name": "wm-control",
+  "name": "komorebi-deck",
   "version": "0.1.0",
   "description": "Editor for komorebi, whkd and YASB configuration",
   "license": "MIT",
@@ -17,15 +17,15 @@
     "yaml": "^2.5.1"
   },
   "build": {
-    "appId": "dev.wmcontrol.app",
-    "productName": "WM Control",
+    "appId": "dev.komorebideck.app",
+    "productName": "Komorebi Deck",
     "directories": { "output": "dist" },
     "files": ["src/**/*", "build/icon.ico", "package.json"],
     "asarUnpack": ["**/*.ps1"],
     "win": {
       "icon": "build/icon.ico",
       "target": [{ "target": "zip", "arch": ["x64"] }],
-      "artifactName": "WM-Control-${version}-windows-x64.${ext}"
+      "artifactName": "Komorebi-Deck-${version}-windows-x64.${ext}"
     }
   }
 }

@@ -1,4 +1,4 @@
-# WM Control
+# Komorebi Deck
 
 A desktop editor for [komorebi](https://github.com/LGUG2Z/komorebi),
 [whkd](https://github.com/LGUG2Z/whkd) and [YASB](https://github.com/amnweb/yasb),
@@ -11,8 +11,8 @@ windows between workspaces in that drawing.
 ## Getting it
 
 Download the zip from [Releases](../../releases), unzip it anywhere, run
-`WM Control.exe`. There is no installer and nothing is written outside your
-config files and `~/.config/wm-control`.
+`Komorebi Deck.exe`. There is no installer and nothing is written outside your
+config files and `~/.config/komorebi-deck`.
 
 The download is about 110MB and unzips to about 270MB. That is Electron, not this app.
 
@@ -30,7 +30,7 @@ and YASB are each optional and only disable their own tab.
 
 If something is not where the app expects, it says so on first launch and lets
 you point at it. That choice is remembered in
-`~/.config/wm-control/paths.json`.
+`~/.config/komorebi-deck/paths.json`.
 
 ## What it edits
 
@@ -93,15 +93,6 @@ the mark at seven sizes and packs them. Edit the artwork in that script rather
 than the .ico. The same mark is drawn inline in the rail, where it follows
 whatever accent you picked; the packaged icon cannot, so it keeps the default.
 
-A zip has no installer, so nothing puts the app in your Start Menu. This does:
-
-```bash
-powershell -ExecutionPolicy Bypass -File build\make-shortcut.ps1 -Desktop
-```
-
-Drop `-Desktop` for Start Menu only, add `-Remove` to take them away again. The
-small arrow Windows draws on a shortcut is the shell marking it as one; every
-shortcut has it and it is a system-wide setting, not something an app sets.
 
 ## Building a release
 
@@ -111,6 +102,12 @@ npm run build
 
 Puts a zip in `dist/`. Pushing a `v*` tag does the same on GitHub and attaches
 it to the release.
+
+## Folding a section
+
+Every section heading folds it away, and what you fold is remembered. Searching
+opens whatever it matched for as long as the search runs, then puts your own
+arrangement back when you clear it; the palette opens whatever it lands in.
 
 ## Finding things
 
