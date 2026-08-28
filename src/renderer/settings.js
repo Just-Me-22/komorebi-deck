@@ -147,6 +147,11 @@ function renderSettings() {
       + "your config so it survives a komorebi restart.";
   behaviour.appendChild(stayNote);
 
+  // Filled after it is in the document: renderTools finds its container by id,
+  // which does not work while the container is still a loose element.
+  box.appendChild(toolsSection());
+  if (typeof renderTools === "function") renderTools();
+
   const reset = document.createElement("button");
   reset.className = "ghost";
   reset.textContent = "Back to the defaults";
@@ -160,6 +165,38 @@ function renderSettings() {
   bar.appendChild(reset);
   box.appendChild(bar);
   if (typeof setupGroups === "function") setupGroups();
+}
+
+// The three programs this app drives. Rendered here rather than behind a
+// keyboard shortcut, because someone who does not have one of them has no
+// reason to know the shortcut exists.
+function toolsSection() {
+  const list = document.createElement("div");
+  list.className = "tool-list";
+  list.id = "tools-list";
+
+  const note = document.createElement("p");
+  note.className = "note";
+  note.id = "tools-note";
+
+  const bar = document.createElement("div");
+  bar.className = "sc-toolbar";
+  const again = document.createElement("button");
+  again.className = "ghost";
+  again.textContent = "Check for updates";
+  again.addEventListener("click", async () => {
+    again.disabled = true;
+    await lookUpVersions(true);
+    again.disabled = false;
+  });
+  bar.appendChild(again);
+
+  const group = document.createElement("div");
+  group.className = "group";
+  group.innerHTML = "<h2>komorebi, whkd and YASB</h2>";
+  group.append(list, note, bar);
+
+  return group;
 }
 
 /* ---------- accent ---------- */

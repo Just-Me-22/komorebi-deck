@@ -1241,7 +1241,13 @@ $$(".tab").forEach((b) => b.addEventListener("click", () => {
   }
   if (b.dataset.view === "snapshots") { renderSnapshots(); renderProfiles(); }
   if (b.dataset.view === "map") { refreshMap(); startMapEvents(); }
-  if (b.dataset.view === "settings") renderSettings();
+  // Settings is also drawn at start-up so the palette can find what is in it.
+  // Looking up versions is left to this, so opening the app never goes near the
+  // network on its own.
+  if (b.dataset.view === "settings") {
+    renderSettings();
+    if (typeof lookUpVersions === "function") lookUpVersions();
+  }
 }));
 
 document.addEventListener("keydown", (e) => {

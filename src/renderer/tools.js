@@ -36,29 +36,36 @@ document.querySelector("nav").addEventListener("click", (e) => {
   if (name) showTools(name);
 }, true);
 
-/* ---------- the screen ---------- */
+/* ---------- the section in Settings ---------- */
 
-async function showTools(focus) {
-  const modal = document.querySelector("#tools-modal");
-  modal.hidden = false;
-  await loadTools();
-  renderTools(focus);
+// Going and looking is a decision, so it happens once you have opened Settings
+// and not before, and the answer is kept for the session.
+let looking = false;
 
-  // Only now, and only because you asked to see it.
-  const box = document.querySelector("#tools-list");
-  const note = document.querySelector("#tools-note");
-  note.textContent = "Checking what the latest versions are...";
+async function lookUpVersions(force) {
+  if (looking || (latest && !force)) return;
+  looking = true;
   latest = await window.wm.toolsLatest();
-  note.textContent = latest.winget
-    ? `Versions come from winget ${latest.version}. Nothing is installed or updated unless you ask.`
-    : "winget was not found, so this can only report what you already have. "
-      + "Each project's own page has downloads.";
-  renderTools(focus);
+  looking = false;
+  renderTools();
+}
+
+function showTools(focus) {
+  document.querySelector('.tab[data-view="settings"]').click();
+  lookUpVersions();
+  const box = document.querySelector("#tools-list");
+  if (!box) return;
+  unfoldFor(box);
+  box.closest(".group")?.scrollIntoView({ block: "center", behavior: "smooth" });
+  if (focus) renderTools(focus);
 }
 
 function renderTools(focus) {
   const box = document.querySelector("#tools-list");
+  if (!box) return;
   box.innerHTML = "";
+  const note = document.querySelector("#tools-note");
+  if (note) note.textContent = toolsNote();
 
   for (const [name, tool] of Object.entries(toolState)) {
     const row = document.createElement("div");
@@ -165,16 +172,19 @@ async function runInstall(name, channel, upgrade) {
   const note = document.querySelector("#tools-note");
   note.textContent = `${upgrade ? "Updating" : "Installing"} ${what}. This can take a minute.`;
   const r = await window.wm.toolsInstall(name, channel, upgrade);
-  note.textContent = r.ok
+  if (note) note.textContent = r.ok
     ? `${what} is now ${r.version || "installed"}.`
     : `That did not work: ${r.output || "winget said nothing useful"}`;
 
   await loadTools();
-  latest = await window.wm.toolsLatest();
-  renderTools();
+  await lookUpVersions(true);
   if (typeof checkSetup === "function") checkSetup();
 }
 
-document.querySelector("#tools-close").addEventListener("click", () => {
-  document.querySelector("#tools-modal").hidden = true;
-});
+function toolsNote() {
+  if (!latest) return "Checking what the latest versions are...";
+  return latest.winget
+    ? `Versions come from winget ${latest.version}. Nothing is installed or updated unless you ask for it.`
+    : "winget was not found, so this can only report what you already have. "
+      + "Each project has its own downloads page.";
+}
