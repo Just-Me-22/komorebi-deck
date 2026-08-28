@@ -164,6 +164,14 @@ function renderSettings() {
   bar.className = "sc-toolbar reset";
   bar.appendChild(reset);
   box.appendChild(bar);
+
+  // There is no installer and no auto-update, so this is the only place someone
+  // can find out which build they unzipped.
+  const version = document.createElement("p");
+  version.className = "note";
+  version.textContent = `Komorebi Deck ${window.wm.version}`;
+  box.appendChild(version);
+
   if (typeof setupGroups === "function") setupGroups();
 }
 

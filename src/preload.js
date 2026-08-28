@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("wm", {
+  version: ipcRenderer.sendSync("app:version"),
   read: (kind) => ipcRenderer.invoke("config:read", kind),
   write: (kind, text) => ipcRenderer.invoke("config:write", kind, text),
   validate: (kind, text) => ipcRenderer.invoke("config:validate", kind, text),

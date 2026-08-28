@@ -859,6 +859,10 @@ ipcMain.handle("dialog:pickImage", async () => {
   return r.canceled ? null : r.filePaths[0];
 });
 
+// Synchronous so the preload can expose it as a value rather than a promise:
+// it is fixed for the life of the process and Settings wants it while rendering.
+ipcMain.on("app:version", (e) => { e.returnValue = app.getVersion(); });
+
 ipcMain.handle("dialog:confirm", async (_e, message, detail) => {
   const { response } = await dialog.showMessageBox(win, {
     type: "warning",
