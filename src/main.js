@@ -32,6 +32,7 @@ function createWindow() {
     minHeight: 600,
     backgroundColor: "#0e1117",
     title: "WM Control",
+    icon: path.join(__dirname, "..", "build", "icon.ico"),
     autoHideMenuBar: true,
     alwaysOnTop: true,
     webPreferences: { preload: path.join(__dirname, "preload.js") },

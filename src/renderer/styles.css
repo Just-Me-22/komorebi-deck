@@ -920,12 +920,20 @@ button.primary.dirty::after, button.accent.dirty::after {
   color: var(--faint); font-size: 10.5px; padding: 9px 4px; cursor: pointer;
 }
 .swatch i {
+  display: grid; place-items: center;
   width: 100%; height: 26px; border-radius: 5px; background: var(--sw);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.28);
 }
-.swatch:hover { color: var(--text); border-color: var(--rule); }
-.swatch.on { color: var(--text); border-color: var(--sw); }
-.swatch.on i { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.28), 0 0 0 3px var(--panel), 0 0 0 4px var(--sw); }
+/* One signal, not two. A ring in the swatch's own colour around a tile of that
+   colour just read as a thick blurred edge. */
+.swatch i svg { width: 15px; height: 15px; opacity: 0; }
+.swatch i path {
+  fill: none; stroke: var(--tick); stroke-width: 2.6;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.swatch:hover { color: var(--text); background: var(--rule-soft); }
+.swatch.on { color: var(--text); background: var(--raise); border-color: var(--rule); }
+.swatch.on i svg { opacity: 1; }
 
 /* The colour input is the tile: it sits on top of it, invisible, so the whole
    thing opens the picker. */
@@ -971,10 +979,10 @@ header h1 {
   text-transform: none; color: var(--text);
   display: flex; align-items: center; gap: 9px;
 }
-.brand::before {
-  content: ""; width: 9px; height: 9px; border-radius: 3px;
-  background: var(--glow); flex: none;
-}
+/* Drawn rather than loaded, so it follows the accent like everything else. It
+   replaces the plain square that used to sit here. The packaged .ico cannot
+   follow anything, so that one keeps the default blue. */
+.brand svg { width: 17px; height: 17px; flex: none; color: var(--glow); }
 .group > h2, .group > h3 { font-size: 10px; letter-spacing: 0.08em; font-weight: 650; }
 .group > h2::after, .group > h3::after { display: none; }
 .lbl em, .colour .meta em, .edges span, .ws-head span, .app-head span { font-family: var(--mono); }

@@ -23,6 +23,7 @@
     "files": ["src/**/*", "package.json"],
     "asarUnpack": ["**/*.ps1"],
     "win": {
+      "icon": "build/icon.ico",
       "target": [{ "target": "zip", "arch": ["x64"] }],
       "artifactName": "WM-Control-${version}-windows-x64.${ext}"
     }

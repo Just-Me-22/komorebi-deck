@@ -163,6 +163,18 @@ function renderSettings() {
 
 /* ---------- accent ---------- */
 
+// A tick sits on the chosen colour, so it takes whichever of black or white
+// reads better on it. A luminance threshold was not good enough: Rose, Amber and
+// Ember all sit near the middle and were getting a white tick at 2.2 to 1.
+function tint(el, colour) {
+  el.style.setProperty("--sw", colour);
+  const dark = contrast("#000000", colour) >= contrast("#ffffff", colour);
+  el.style.setProperty("--tick", dark ? "#000000" : "#ffffff");
+}
+
+const TICK = '<i><svg viewBox="0 0 24 24" aria-hidden="true">'
+  + '<path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i>';
+
 // The colour is the control. A named chip with a small square beside it made
 // eight near-identical buttons, and the one thing that separates them was the
 // smallest part of each.
@@ -178,8 +190,8 @@ function accentPicker(ui, set) {
     b.className = "swatch" + (hex.toLowerCase() === ui.accent.toLowerCase() ? " on" : "");
     // The tile shows what this colour becomes on the theme you are on, not the
     // hex it started as, because on a light ground several of them darken.
-    b.style.setProperty("--sw", fitAccent(hex, GROUNDS[ui.theme]));
-    b.innerHTML = `<i></i><span>${name}</span>`;
+    tint(b, fitAccent(hex, GROUNDS[ui.theme]));
+    b.innerHTML = TICK + `<span>${name}</span>`;
     b.title = hex;
     b.addEventListener("click", () => set("accent")(hex));
     grid.appendChild(b);
@@ -188,8 +200,8 @@ function accentPicker(ui, set) {
   const own = ACCENTS.every(([hex]) => hex.toLowerCase() !== ui.accent.toLowerCase());
   const pick = document.createElement("label");
   pick.className = "swatch custom" + (own ? " on" : "");
-  pick.style.setProperty("--sw", fitAccent(ui.accent, GROUNDS[ui.theme]));
-  pick.innerHTML = "<i></i><span>Your own</span>";
+  tint(pick, fitAccent(ui.accent, GROUNDS[ui.theme]));
+  pick.innerHTML = TICK + "<span>Your own</span>";
   const custom = document.createElement("input");
   custom.type = "color";
   custom.value = ui.accent;
