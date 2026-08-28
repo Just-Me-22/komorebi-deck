@@ -8,6 +8,8 @@ finding out at the next restart whether you got it right.
 It also draws what komorebi is doing right now, to scale, and lets you drag
 windows between workspaces in that drawing.
 
+![The live map, drawn to scale from komorebi's own state](screenshots/01-live-map.png)
+
 ## Getting it
 
 Download the zip from [Releases](../../releases), unzip it anywhere, run
@@ -45,6 +47,11 @@ hand, and that choice is remembered in `~/.config/komorebi-deck/paths.json`.
 
 `KOMOREBI_CONFIG_HOME`, `WHKD_CONFIG_HOME` and `YASB_CONFIG_HOME` are followed
 when you have them set.
+
+![The Window manager tab](screenshots/02-window-manager.png)
+
+More of it in [screenshots](screenshots): the border and colour settings, the
+easing curve, the shortcut editor, the bar, app rules and the raw files.
 
 **Save** writes to disk. **Save and apply** also restarts whatever needs
 restarting, asking first before it touches komorebi, since that re-tiles every
