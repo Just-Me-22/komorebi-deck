@@ -79,6 +79,14 @@ function applyUI(ui) {
 
 /* ---------- the tab ---------- */
 
+function group(title, ...children) {
+  const box = document.createElement("div");
+  box.className = "group";
+  box.innerHTML = `<h2>${title}</h2>`;
+  box.append(...children);
+  return box;
+}
+
 function renderSettings() {
   const box = document.querySelector("#settings");
   if (!box) return;
@@ -93,47 +101,21 @@ function renderSettings() {
     if (typeof renderPreviews === "function") renderPreviews();
   };
 
-  box.appendChild(choiceRow("Theme", "light or dark",
-    [["dark", "Dark"], ["light", "Light"]], ui.theme, set("theme")));
+  box.appendChild(group("Colour",
+    choiceRow("Theme", "light or dark",
+      [["dark", "Dark"], ["light", "Light"]], ui.theme, set("theme")),
+    accentPicker(ui, set)));
 
-  const swatches = document.createElement("div");
-  swatches.className = "accent-grid";
-  ACCENTS.forEach(([hex, name]) => {
-    const b = document.createElement("button");
-    b.className = "accent" + (hex === ui.accent ? " active" : "");
-    b.style.setProperty("--sw", hex);
-    b.innerHTML = `<i></i><span>${name}</span>`;
-    b.addEventListener("click", () => set("accent")(hex));
-    swatches.appendChild(b);
-  });
+  box.appendChild(group("Layout",
+    choiceRow("Row spacing", "how much air between settings",
+      [["normal", "Normal"], ["compact", "Compact"]], ui.density, set("density")),
+    choiceRow("Motion", "the animation preview and nothing else",
+      [["on", "On"], ["off", "Off"]], ui.motion, set("motion"))));
 
-  const custom = document.createElement("input");
-  custom.type = "color";
-  custom.value = ui.accent;
-  custom.title = "Any colour you like";
-  custom.addEventListener("change", () => set("accent")(custom.value));
-
-  const accentRow = document.createElement("div");
-  accentRow.className = "row";
-  accentRow.innerHTML = '<span class="lbl">Accent<em>focus, selection and anything good</em></span>';
-  accentRow.appendChild(custom);
-  box.append(accentRow, swatches);
-
-  const shown = fitAccent(ui.accent, GROUNDS[ui.theme]);
-  const ratio = contrast(shown, GROUNDS[ui.theme]).toFixed(1);
-  const note = document.createElement("p");
-  note.className = "note";
-  note.textContent = shown.toLowerCase() === ui.accent.toLowerCase()
-    ? `Contrast against the background: ${ratio} to 1.`
-    : `Adjusted to ${shown} so it stays readable on this background, now ${ratio} to 1.`;
-  box.appendChild(note);
-
-  box.appendChild(choiceRow("Row spacing", "how much air between settings",
-    [["normal", "Normal"], ["compact", "Compact"]], ui.density, set("density")));
-  box.appendChild(choiceRow("Motion", "the animation preview and nothing else",
-    [["on", "On"], ["off", "Off"]], ui.motion, set("motion")));
-  box.appendChild(choiceRow("Always on top", "stays above other windows whatever komorebi does",
-    [["yes", "Yes"], ["no", "No"]], ui.onTop, set("onTop")));
+  const behaviour = group("This window",
+    choiceRow("Always on top", "stays above other windows whatever komorebi does",
+      [["yes", "Yes"], ["no", "No"]], ui.onTop, set("onTop")));
+  box.appendChild(behaviour);
 
   const stay = document.createElement("div");
   stay.className = "row";
@@ -154,7 +136,7 @@ function renderSettings() {
     renderSettings();
   });
   stay.appendChild(stayBtn);
-  box.appendChild(stay);
+  behaviour.appendChild(stay);
 
   const stayNote = document.createElement("p");
   stayNote.className = "note";
@@ -163,7 +145,7 @@ function renderSettings() {
     : "The app already asks komorebi to leave it alone each time it starts, so it will not "
       + "vanish when you switch workspace. Making it permanent writes the same rule into "
       + "your config so it survives a komorebi restart.";
-  box.appendChild(stayNote);
+  behaviour.appendChild(stayNote);
 
   const reset = document.createElement("button");
   reset.className = "ghost";
@@ -174,25 +156,73 @@ function renderSettings() {
     renderSettings();
   });
   const bar = document.createElement("div");
-  bar.className = "sc-toolbar";
+  bar.className = "sc-toolbar reset";
   bar.appendChild(reset);
   box.appendChild(bar);
+}
+
+/* ---------- accent ---------- */
+
+// The colour is the control. A named chip with a small square beside it made
+// eight near-identical buttons, and the one thing that separates them was the
+// smallest part of each.
+function accentPicker(ui, set) {
+  const wrap = document.createElement("div");
+  wrap.className = "accent-block";
+  wrap.innerHTML = '<span class="lbl">Accent<em>focus, selection and anything good</em></span>';
+
+  const grid = document.createElement("div");
+  grid.className = "swatches";
+  ACCENTS.forEach(([hex, name]) => {
+    const b = document.createElement("button");
+    b.className = "swatch" + (hex.toLowerCase() === ui.accent.toLowerCase() ? " on" : "");
+    // The tile shows what this colour becomes on the theme you are on, not the
+    // hex it started as, because on a light ground several of them darken.
+    b.style.setProperty("--sw", fitAccent(hex, GROUNDS[ui.theme]));
+    b.innerHTML = `<i></i><span>${name}</span>`;
+    b.title = hex;
+    b.addEventListener("click", () => set("accent")(hex));
+    grid.appendChild(b);
+  });
+
+  const own = ACCENTS.every(([hex]) => hex.toLowerCase() !== ui.accent.toLowerCase());
+  const pick = document.createElement("label");
+  pick.className = "swatch custom" + (own ? " on" : "");
+  pick.style.setProperty("--sw", fitAccent(ui.accent, GROUNDS[ui.theme]));
+  pick.innerHTML = "<i></i><span>Your own</span>";
+  const custom = document.createElement("input");
+  custom.type = "color";
+  custom.value = ui.accent;
+  custom.addEventListener("change", () => set("accent")(custom.value));
+  pick.appendChild(custom);
+  grid.appendChild(pick);
+  wrap.appendChild(grid);
+
+  const shown = fitAccent(ui.accent, GROUNDS[ui.theme]);
+  const ratio = contrast(shown, GROUNDS[ui.theme]).toFixed(1);
+  const note = document.createElement("p");
+  note.className = "note";
+  note.textContent = shown.toLowerCase() === ui.accent.toLowerCase()
+    ? `Contrast against the background: ${ratio} to 1.`
+    : `Lightened to ${shown} so it still reads on this background, now ${ratio} to 1.`;
+  wrap.appendChild(note);
+  return wrap;
 }
 
 function choiceRow(label, hint, options, current, onPick) {
   const row = document.createElement("div");
   row.className = "row";
   row.innerHTML = `<span class="lbl">${label}<em>${hint}</em></span>`;
-  const group = document.createElement("div");
-  group.className = "seg";
+  const seg = document.createElement("div");
+  seg.className = "seg";
   options.forEach(([value, text]) => {
     const b = document.createElement("button");
     b.className = "seg-opt" + (value === current ? " active" : "");
     b.textContent = text;
     b.addEventListener("click", () => onPick(value));
-    group.appendChild(b);
+    seg.appendChild(b);
   });
-  row.appendChild(group);
+  row.appendChild(seg);
   return row;
 }
 

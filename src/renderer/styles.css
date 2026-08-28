@@ -905,18 +905,42 @@ button.primary.dirty::after, button.accent.dirty::after {
 .seg-opt:hover { color: var(--text); }
 .seg-opt.active { border-color: var(--glow); color: var(--glow); position: relative; z-index: 1; }
 
-.accent-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
-  gap: 7px; margin-top: 12px;
+/* These were class="accent" and so were picking up button.accent, which is the
+   Save and apply button: every swatch came out filled with the current accent
+   and none of them showed its own colour. */
+.accent-block { padding: var(--row-pad, 8px) 0; }
+.swatches {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 8px; margin-top: 12px;
 }
-.accent {
-  display: flex; align-items: center; gap: 8px;
-  background: var(--well); border: 1px solid var(--rule); color: var(--dim);
-  padding: 6px 10px; cursor: pointer; font-size: 11.5px;
+.swatch {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  background: none; border: 1px solid transparent; border-radius: var(--radius);
+  color: var(--faint); font-size: 10.5px; padding: 9px 4px; cursor: pointer;
 }
-.accent i { width: 14px; height: 14px; background: var(--sw); flex: none; }
-.accent:hover { color: var(--text); }
-.accent.active { border-color: var(--glow); color: var(--text); }
+.swatch i {
+  width: 100%; height: 26px; border-radius: 5px; background: var(--sw);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.28);
+}
+.swatch:hover { color: var(--text); border-color: var(--rule); }
+.swatch.on { color: var(--text); border-color: var(--sw); }
+.swatch.on i { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.28), 0 0 0 3px var(--panel), 0 0 0 4px var(--sw); }
+
+/* The colour input is the tile: it sits on top of it, invisible, so the whole
+   thing opens the picker. */
+.swatch.custom { overflow: hidden; }
+.swatch.custom input[type="color"] {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; border: none; padding: 0; cursor: pointer;
+}
+.swatch.custom i {
+  background:
+    linear-gradient(135deg, transparent 46%, var(--rule) 46%, var(--rule) 54%, transparent 54%),
+    var(--sw);
+}
+
+.sc-toolbar.reset { margin: 4px 0 0; }
 
 /* ---------- inline validation ---------- */
 .note.bad { border-left-color: var(--bad); color: var(--bad); }
