@@ -247,7 +247,7 @@ function animLive(field, kind, value) {
 
 function animRow(field, kind, label, hint) {
   const row = document.createElement("label");
-  row.className = "row" + (field === "enabled" ? " switch" : "");
+  row.className = "row";
   row.innerHTML = `<span class="lbl">${label}<em>${hint}</em></span>`;
 
   let input;
@@ -288,7 +288,7 @@ function renderAnimation() {
   box.innerHTML = "";
 
   const toggle = document.createElement("label");
-  toggle.className = "row switch";
+  toggle.className = "row";
   toggle.innerHTML =
     '<span class="lbl">Set movement and fade separately<em>animation kinds</em></span>';
   const cb = document.createElement("input");
@@ -334,7 +334,7 @@ function renderAnimation() {
   fps.appendChild(dressNumber(fpsIn));
 
   const ghost = document.createElement("label");
-  ghost.className = "row switch";
+  ghost.className = "row";
   ghost.innerHTML =
     '<span class="lbl">Animate on the GPU<em>animation.ghost_movement, needs a restart</em></span>';
   const ghostIn = document.createElement("input");

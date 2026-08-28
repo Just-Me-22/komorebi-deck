@@ -45,7 +45,7 @@
 
     <div class="group">
       <h2>Floating</h2>
-      <label class="row switch">
+      <label class="row">
         <span class="lbl">Open every new window floating<em>float_override</em></span>
         <input type="checkbox" data-key="float_override">
       </label>
@@ -87,7 +87,7 @@
 
     <div class="group">
       <h2>Behaviour</h2>
-      <label class="row switch">
+      <label class="row">
         <span class="lbl">Move the cursor to the window I focus<em>mouse_follows_focus</em></span>
         <input type="checkbox" data-key="mouse_follows_focus">
       </label>
@@ -194,7 +194,7 @@
     </header>
 
     <div class="group">
-      <label class="row switch" data-explain="live-apply">
+      <label class="row" data-explain="live-apply">
         <span class="lbl">Apply as I change it<em>sends each setting to komorebi straight away</em></span>
         <input type="checkbox" id="live-apply" checked>
       </label>
@@ -203,7 +203,7 @@
 
     <div class="group">
       <h2>Borders</h2>
-      <label class="row switch">
+      <label class="row">
         <span class="lbl">Draw borders<em>border</em></span>
         <input type="checkbox" data-key="border">
       </label>
@@ -230,7 +230,7 @@
 
     <div class="group">
       <h2>Transparency</h2>
-      <label class="row switch">
+      <label class="row">
         <span class="lbl">Fade unfocused windows<em>transparency</em></span>
         <input type="checkbox" data-key="transparency">
       </label>
@@ -403,8 +403,8 @@
 <footer class="bar">
   <span id="msg" class="msg"></span>
   <div class="actions">
-    <button class="ghost icon" id="btn-undo" disabled>Undo</button>
-    <button class="ghost icon" id="btn-redo" disabled>Redo</button>
+    <button class="ghost" id="btn-undo" disabled>Undo</button>
+    <button class="ghost" id="btn-redo" disabled>Redo</button>
     <button class="ghost" id="btn-diff">Preview changes</button>
     <button class="ghost" id="btn-reload">Reload from disk</button>
     <button class="primary" id="btn-save">Save</button>
