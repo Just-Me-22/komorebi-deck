@@ -67,11 +67,16 @@ function renderTools(focus) {
     const have = tool.version;
     const channels = latest?.versions?.[name] || {};
     const newest = channels.stable;
-    const behind = have && newest && olderThan(have, newest);
+    // Being on the nightly is not being out of date. Its version matching the
+    // nightly and not the stable one is the only way to tell which you are on,
+    // since both channels are just komorebi reporting a number.
+    const onNightly = !!(have && channels.nightly
+      && have === channels.nightly && have !== channels.stable);
+    const behind = have && newest && !onNightly && olderThan(have, newest);
 
     row.innerHTML = `<i></i>`
       + `<span class="tool-name">${tool.label}<em>${tool.what}</em></span>`
-      + `<span class="tool-ver">${versionLine(tool, have, channels, behind)}</span>`;
+      + `<span class="tool-ver">${versionLine(tool, have, channels, behind, onNightly)}</span>`;
 
     const acts = document.createElement("div");
     acts.className = "tool-acts";
@@ -91,10 +96,16 @@ function renderTools(focus) {
         () => runInstall(name, "stable", true)));
     }
 
-    // A nightly is a choice, not an upgrade, so it is offered rather than pushed.
+    // A nightly is a choice rather than an upgrade, so it sits beside the update
+    // rather than replacing it, and it offers the way back once you are on it.
+    // Changing channel installs a different package, so it is never an upgrade:
+    // winget cannot upgrade to something that is not installed.
     if (tool.installed && latest?.winget && channels.nightly) {
-      acts.appendChild(toolButton("Switch to nightly", "ghost",
-        () => runInstall(name, "nightly", true)));
+      acts.appendChild(onNightly
+        ? toolButton(`Back to stable ${channels.stable}`, "ghost",
+            () => runInstall(name, "stable", false))
+        : toolButton(`Try nightly ${channels.nightly}`, "ghost",
+            () => runInstall(name, "nightly", false)));
     }
 
     const site = document.createElement("button");
@@ -115,12 +126,13 @@ const olderThan = (a, b) => {
   return false;
 };
 
-function versionLine(tool, have, channels, behind) {
+function versionLine(tool, have, channels, behind, onNightly) {
   if (!tool.installed) {
-    const s = channels.stable ? `latest ${channels.stable}` : "not installed";
-    return `<b>not installed</b>${channels.stable ? `<em>${s}</em>` : ""}`;
+    return `<b>not installed</b>`
+      + (channels.stable ? `<em>latest ${channels.stable}</em>` : "");
   }
   if (!latest) return `<b>${have || "installed"}</b>`;
+  if (onNightly) return `<b>${have}</b><em>nightly, ahead of ${channels.stable}</em>`;
   if (behind) return `<b>${have}</b><em>${channels.stable} is out</em>`;
   return `<b>${have}</b><em>up to date</em>`;
 }
