@@ -195,6 +195,15 @@ function renderBorderColours() {
 
 const ANIM_DEFAULTS = { enabled: false, duration: 250, style: "Linear" };
 
+// Where the other 31 easings are a name, a custom one is a bare array of four
+// numbers, in the same order and meaning CSS gives cubic-bezier. The schema
+// describes it as { CubicBezier: [...] } instead, which komorebi will not read:
+// AnimationStyle deserialises by hand from a string or a four-element array, and
+// the object form is an artefact of how the schema is generated.
+const BEZIER_DEFAULT = [0.4, 0, 0.2, 1];
+const bezierOf = (style) => (Array.isArray(style) && style.length === 4 ? style : null);
+const copyStyle = (v) => (bezierOf(v) ? [...v] : v);
+
 // `enabled` is the one required field, so a block created here has to carry it.
 const animBlock = () =>
   (state.komorebi.animation = state.komorebi.animation || { enabled: false });
@@ -228,8 +237,10 @@ function animSetSplit(on) {
     const cur = a[field];
     if (on) {
       const v = cur === undefined ? ANIM_DEFAULTS[field] : cur;
-      a[field] = { movement: v, transparency: v };
-    } else if (typeof cur === "object" && cur !== null) {
+      a[field] = { movement: copyStyle(v), transparency: copyStyle(v) };
+    } else if (cur && typeof cur === "object" && !bezierOf(cur)) {
+      // A custom curve is an array, so it is already one value for everything
+      // and there is no per-kind map here to pull `movement` back out of.
       a[field] = cur.movement ?? ANIM_DEFAULTS[field];
     }
   }
@@ -242,7 +253,11 @@ function animLive(field, kind, value) {
   const label = kind ? `${field} (${kind})` : field;
   if (field === "enabled") liveSend(["animation", value ? "enable" : "disable", ...scope], label);
   if (field === "duration") liveSend(["animation-duration", ...scope, ...posArg(value)], label);
-  if (field === "style") liveSend(["animation-style", "-s", kebab(value), ...scope], label);
+  // komorebic takes an easing by name and has no way to pass four numbers, so a
+  // custom curve is the one animation setting that only lands on a restart.
+  if (field === "style" && !bezierOf(value)) {
+    liveSend(["animation-style", "-s", kebab(value), ...scope], label);
+  }
 }
 
 function animRow(field, kind, label, hint) {
@@ -263,13 +278,16 @@ function animRow(field, kind, label, hint) {
     input.value = animGet(field, kind);
   } else {
     input = document.createElement("select");
-    fillSelect(input, KENUM.EASING, animGet(field, kind));
+    const cur = animGet(field, kind);
+    fillSelect(input, [...KENUM.EASING, "CubicBezier"], bezierOf(cur) ? "CubicBezier" : cur);
+    input.querySelector('[value="CubicBezier"]').textContent = "Custom curve";
   }
 
   input.addEventListener("change", () => {
     const v = field === "enabled" ? input.checked
       : field === "duration" ? Number(input.value)
-      : input.value;
+      : input.value !== "CubicBezier" ? input.value
+      : [...(bezierOf(animGet("style", kind)) || BEZIER_DEFAULT)];
     animSet(field, kind, v);
     animLive(field, kind, v);
     renderPreviews();

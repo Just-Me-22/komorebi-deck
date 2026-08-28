@@ -671,6 +671,18 @@ button.has-key kbd {
 .pv-area { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 3 3; }
 .pv-gapfill { fill: var(--glow); opacity: 0.22; stroke: none; }
 
+/* The custom easing plot. pointer-events on the handle is `all` so the whole
+   disc catches a drag rather than only the painted ring, and the invisible
+   stroke widens that disc to something you can actually hit. */
+.pv-curve { fill: none; stroke: var(--glow); stroke-width: 2; }
+.pv-arm { stroke: var(--faint); stroke-width: 1; stroke-dasharray: 2 2; }
+.pv-handle {
+  fill: var(--glow); stroke: transparent; stroke-width: 14;
+  pointer-events: all; touch-action: none; cursor: grab;
+}
+.pv-handle:active { cursor: grabbing; }
+.pv-head { fill: var(--text); stroke: var(--void); stroke-width: 1.5; }
+
 /* ---------- wallpaper ---------- */
 .wall-list { display: flex; flex-direction: column; gap: 6px; }
 .wall-row {

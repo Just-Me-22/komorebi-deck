@@ -79,7 +79,7 @@ const EXPLAIN = {
   "animation.duration": ["How long it takes, in milliseconds",
     "150 to 250 feels quick. Past 400 you start waiting for the window to catch up.", "easing"],
   "animation.style": ["The shape of the movement",
-    "The curve is position over time. Flat ones move steadily. The ones that shoot past the line overshoot and spring back.", "easing"],
+    "The curve is position over time. Flat ones move steadily. The ones that shoot past the line overshoot and spring back. Custom curve lets you drag your own, and is the only one that waits for a restart rather than applying as you pick it.", "easing"],
   "animation.fps": ["Frames per second while animating",
     "60 matches most screens. Higher costs more work for something on screen for a fifth of a second."],
   "animation.ghost_movement": ["Animate on the GPU",

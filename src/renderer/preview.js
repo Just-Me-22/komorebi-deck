@@ -196,9 +196,44 @@ EASE.EaseInBounce = (t) => 1 - EASE.EaseOutBounce(1 - t);
 EASE.EaseInOutBounce = (t) =>
   t < 0.5 ? (1 - EASE.EaseOutBounce(1 - 2 * t)) / 2 : (1 + EASE.EaseOutBounce(2 * t - 1)) / 2;
 
+function shape(parent, tag, cls) {
+  const el = slot(parent, tag);
+  el.setAttribute("class", cls || "");
+  return el;
+}
+
+function attrs(el, a) {
+  for (const k in a) el.setAttribute(k, a[k]);
+  return el;
+}
+
+// Reused, or a redraw would leave a row of Replay buttons behind now that the
+// box is no longer emptied first.
+function replayButton(box) {
+  let b = box.querySelector(".pv-replay");
+  if (!b) {
+    b = document.createElement("button");
+    b.className = "ghost small pv-replay";
+    b.textContent = "Replay";
+  }
+  box.appendChild(b);
+  return b;
+}
+
+const reducedMotion = () => document.documentElement.dataset.motion === "off"
+  || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// A named easing gets the movement itself. A custom one gets plotted instead,
+// because four numbers tell you nothing and the shape tells you everything.
+function drawEasing(box, style, duration, onChange) {
+  const p = bezierOf(style);
+  if (p) drawCurve(box, p, duration, onChange);
+  else drawMotion(box, style, duration);
+}
+
 // Shows the movement rather than plotting it. Runs once when you land here or
 // change a setting, and on Replay, never on its own.
-function drawEasing(box, style, duration) {
+function drawMotion(box, style, duration) {
   const fn = EASE[style] || EASE.Linear;
   const W = 220, H = 84;
   const s = svg(box, W, H);
@@ -209,20 +244,9 @@ function drawEasing(box, style, duration) {
   rect(s, to, y, w, h, "pv-ghost");
   const mover = rect(s, from, y, w, h, "pv-win pv-focused pv-driven");
 
-  const caption = pvCaption(box, `${style}, ${duration}ms`);
-
-  // Reused, or a redraw would leave a row of Replay buttons behind now that the
-  // box is no longer emptied first.
-  let replay = box.querySelector(".pv-replay");
-  if (!replay) {
-    replay = document.createElement("button");
-    replay.className = "ghost small pv-replay";
-    replay.textContent = "Replay";
-  }
-  box.appendChild(replay);
-
-  const reduced = document.documentElement.dataset.motion === "off"
-    || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduced = reducedMotion();
+  pvCaption(box, `${style}, ${duration}ms${reduced ? " (motion reduced)" : ""}`);
+  const replay = replayButton(box);
   let raf = null;
 
   function play() {
@@ -239,8 +263,109 @@ function drawEasing(box, style, duration) {
   }
 
   replay.onclick = play;
-  caption.textContent = reduced
-    ? `${style}, ${duration}ms (motion reduced)` : `${style}, ${duration}ms`;
+  play();
+}
+
+/* ---------- a curve you draw yourself ---------- */
+
+// The plot, in viewBox units: the unit square sits inside a wider box so a
+// handle dragged past 0 or 1 still has somewhere to go.
+const CV = { w: 220, h: 146, x0: 26, pw: 168, y0: 108, ph: 76 };
+const CV_LOW = -0.3, CV_HIGH = 1.3;
+
+const bezAt = (a, b, s) => 3 * (1 - s) ** 2 * s * a + 3 * (1 - s) * s * s * b + s ** 3;
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const round2 = (v) => Math.round(v * 100) / 100;
+
+// The curve is parametric, so the value at a moment in time needs the parameter
+// that puts x there first. Bisection rather than Newton: twenty halvings land
+// well inside a pixel and it cannot diverge on a curve dragged flat.
+function bezierEase(p) {
+  return (t) => {
+    if (t <= 0 || t >= 1) return t;
+    let lo = 0, hi = 1, s = t;
+    for (let i = 0; i < 20; i++) {
+      if (bezAt(p[0], p[2], s) < t) lo = s; else hi = s;
+      s = (lo + hi) / 2;
+    }
+    return bezAt(p[1], p[3], s);
+  };
+}
+
+function drawCurve(box, pts, duration, onChange) {
+  const p = [...pts];
+  const s = svg(box, CV.w, CV.h);
+  const px = (x) => CV.x0 + x * CV.pw;
+  const py = (y) => CV.y0 - y * CV.ph;
+
+  rect(s, 1, 1, CV.w - 2, CV.h - 2, "pv-screen");
+  rect(s, CV.x0, CV.y0 - CV.ph, CV.pw, CV.ph, "pv-area");
+  const curve = shape(s, "path", "pv-curve");
+  const arms = [shape(s, "line", "pv-arm"), shape(s, "line", "pv-arm")];
+  const grips = [shape(s, "circle", "pv-handle"), shape(s, "circle", "pv-handle")]
+    .map((g) => attrs(g, { r: 5 }));
+  const head = attrs(shape(s, "circle", "pv-head"), { r: 4 });
+
+  const reduced = reducedMotion();
+  const cap = pvCaption(box, "");
+  const replay = replayButton(box);
+
+  function paint() {
+    attrs(curve, { d: `M ${px(0)} ${py(0)} C ${px(p[0])} ${py(p[1])},`
+      + ` ${px(p[2])} ${py(p[3])}, ${px(1)} ${py(1)}` });
+    attrs(arms[0], { x1: px(0), y1: py(0), x2: px(p[0]), y2: py(p[1]) });
+    attrs(arms[1], { x1: px(1), y1: py(1), x2: px(p[2]), y2: py(p[3]) });
+    attrs(grips[0], { cx: px(p[0]), cy: py(p[1]) });
+    attrs(grips[1], { cx: px(p[2]), cy: py(p[3]) });
+    cap.textContent = `cubic-bezier(${p.join(", ")}), ${duration}ms. Drag a handle to `
+      + "change it. A custom curve only applies once komorebi restarts.";
+  }
+
+  let raf = null;
+  function play() {
+    cancelAnimationFrame(raf);
+    if (reduced) { attrs(head, { cx: px(1), cy: py(1) }); return; }
+    const fn = bezierEase(p);
+    const started = performance.now();
+    const ms = Math.max(1, Number(duration) || 250);
+    const step = (now) => {
+      const t = Math.min(1, (now - started) / ms);
+      attrs(head, { cx: px(t), cy: py(fn(t)) });
+      if (t < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  // Pointer capture rather than listeners on the document, so a handle dragged
+  // off the plot keeps following the cursor, and lostpointercapture to finish,
+  // which covers the pointer being cancelled as well as released.
+  grips.forEach((grip, i) => {
+    grip.onpointerdown = (e) => {
+      e.preventDefault();
+      grip.setPointerCapture(e.pointerId);
+      // Measured once. Reading it per frame would mean a layout read between
+      // two geometry writes, and the plot cannot move while a handle is held.
+      const r = s.getBoundingClientRect();
+      grip.onpointermove = (ev) => {
+        const x = ((ev.clientX - r.left) / r.width) * CV.w;
+        const y = ((ev.clientY - r.top) / r.height) * CV.h;
+        p[i * 2] = round2(clamp((x - CV.x0) / CV.pw, 0, 1));
+        p[i * 2 + 1] = round2(clamp((CV.y0 - y) / CV.ph, CV_LOW, CV_HIGH));
+        paint();
+      };
+      // Written once at the end rather than every frame: each write is a whole
+      // undo step and a stringify of the config to see whether it changed.
+      grip.onlostpointercapture = () => {
+        grip.onpointermove = null;
+        grip.onlostpointercapture = null;
+        onChange([...p]);
+        play();
+      };
+    };
+  });
+
+  replay.onclick = play;
+  paint();
   play();
 }
 
@@ -373,6 +498,7 @@ function renderPreviews() {
   if (at("#pv-transparency")) drawTransparency(at("#pv-transparency"));
   if (at("#pv-stackbar")) drawStackbar(at("#pv-stackbar"));
   if (at("#pv-easing")) {
-    drawEasing(at("#pv-easing"), animGet("style", "movement"), animGet("duration", "movement"));
+    drawEasing(at("#pv-easing"), animGet("style", "movement"), animGet("duration", "movement"),
+      (pts) => animSet("style", "movement", pts));
   }
 }

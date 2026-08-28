@@ -11,32 +11,25 @@ windows between workspaces in that drawing.
 ## Getting it
 
 Download the zip from [Releases](../../releases), unzip it anywhere, run
-`Komorebi Deck.exe`. There is no installer and nothing is written outside your
-config files and `~/.config/komorebi-deck`.
+`Komorebi Deck.exe`. There is no installer, and nothing is written outside your
+config files and `~/.config/komorebi-deck`. The download is about 110MB and
+unzips to about 270MB, which is Electron rather than this app.
 
-The download is about 110MB and unzips to about 270MB. That is Electron, not this app.
-
-To run it from source instead:
-
-```bash
-npm install && npm start
-```
+From source: `npm install && npm start`.
 
 ## What you need
 
-komorebi. That is the only hard requirement; whkd and YASB are optional and
-only affect their own tab.
+komorebi. whkd and YASB are optional and only affect their own tab.
 
-You do not have to install them yourself. A tab whose program is missing says
-so, and the Tools screen will fetch any of the three through winget, komorebi's
-nightly channel included. Nothing is ever installed or updated without being
-asked, and the latest versions are not looked up until you open that screen.
+You do not have to install any of them yourself. A tab whose program is missing
+says so, and the Tools section in Settings fetches it through winget, komorebi's
+nightly channel included. Nothing is installed or updated without being asked,
+and the latest versions are not looked up until you open that screen.
 
-If you already have them, they are found on your PATH, in scoop, in winget's
-links or in Program Files, and versions are read from the tools themselves so a
-scoop or manual install reports honestly. Anything still missing can be pointed
-at by hand, and that choice is remembered in
-`~/.config/komorebi-deck/paths.json`.
+Ones you already have are found on your PATH, in scoop, in winget's links or in
+Program Files, and versions are read from the tools themselves, so a scoop or
+manual install reports honestly. Anything still missing can be pointed at by
+hand, and that choice is remembered in `~/.config/komorebi-deck/paths.json`.
 
 ## What it edits
 
@@ -50,9 +43,8 @@ at by hand, and that choice is remembered in
 | App rules | `applications.json` | restart komorebi |
 | Raw files | any of the above, plus the bar's `styles.css` | as above |
 
-Config paths follow `KOMOREBI_CONFIG_HOME`, `WHKD_CONFIG_HOME` and
-`YASB_CONFIG_HOME` when you have them set, and fall back to the usual defaults
-when you do not.
+`KOMOREBI_CONFIG_HOME`, `WHKD_CONFIG_HOME` and `YASB_CONFIG_HOME` are followed
+when you have them set.
 
 **Save** writes to disk. **Save and apply** also restarts whatever needs
 restarting, asking first before it touches komorebi, since that re-tiles every
@@ -64,7 +56,7 @@ Reads `komorebic state` and subscribes to komorebi's event pipe, so it follows
 along as you work.
 
 - Clicking a workspace shows it without switching you to it, so you can
-  rearrange a workspace from wherever you are.
+  rearrange one from wherever you are.
 - Drag a floating window and it moves on your actual screen while you hold it.
   Drag a corner to resize it.
 - Drag any window onto a workspace button to send it there.
@@ -79,77 +71,52 @@ Editing these files by hand is how you end up without a window manager, so:
 - Every write leaves the previous version beside it as `<name>.bak-<timestamp>`.
 - Restarts report whether the process actually came back, and offer to put the
   previous config back if it did not.
-- **Setups** keeps named copies of every config file so you can switch between
+- **Setups** keeps named copies of every config file, so you can switch between
   whole arrangements.
 
-## Defaults
+## Where the values come from
 
-Every key in `komorebi.json` is optional, and an absent one means komorebi uses
-its own value. Rather than show an empty box for those, the app reads komorebi's
-defaults out of the same schema it reads the dropdown values from, shows them,
-and marks the row as komorebi's rather than yours.
+Dropdowns and defaults are both read out of `komorebic static-config-schema`,
+from the komorebi you have installed, so they offer what your version accepts
+rather than what mine did. `src/renderer/enums.js` is the fallback for when
+komorebi cannot be reached, and was generated from 0.1.42.
 
-Nothing is written until you change it, so your config only ever gains the
-decisions you actually made, and anything you leave alone keeps following
+Every key in `komorebi.json` is optional, and an absent one means komorebi
+decides. Those rows show komorebi's own value and are marked as its rather than
+yours, and nothing is written until you change it. Your config only ever gains
+the decisions you actually made, and anything you leave alone keeps following
 komorebi, including when a future version changes a default.
 
-## Versions
+Two things komorebi wants in a shape you would not guess. Border colours are
+Catppuccin palette names rather than hex, which is what the `theme` block
+expects when `palette` is `Catppuccin`. And a custom easing curve is a bare
+array of four numbers, `[0.4, 0, 0.2, 1]`, even though the schema describes it
+as an object: komorebi reads that field by hand and only accepts a name or an
+array.
 
-The dropdowns are built from `komorebic static-config-schema`, read from the
-komorebi you actually have, so they offer what your version accepts rather than
-what mine did. The lists in `src/renderer/enums.js` are the fallback for when
-komorebi cannot be reached, and were generated from 0.1.42.
+## Getting around
 
-Border colours are Catppuccin palette names rather than hex, which is what the
-`theme` block expects when `palette` is `Catppuccin`.
+**Ctrl+K** opens a palette over every setting in every tab, plus the tabs
+themselves and what the footer and the rail do. It jumps to the setting and
+marks it so you can see where you landed. The box in the corner of the Window
+manager, Looks and Settings headers filters that tab in place instead.
 
-## The icon
+Every section heading folds it away, and what you fold is remembered. Searching
+opens whatever it matched for as long as the search runs, then puts your own
+arrangement back when you clear it.
 
-`build/icon.ico`, generated by `npx electron build/make-icon.js`, which renders
-the mark at seven sizes and packs them. Edit the artwork in that script rather
-than the .ico. The same mark is drawn inline in the rail, where it follows
-whatever accent you picked; the packaged icon cannot, so it keeps the default.
+**Ctrl+Z** and **Ctrl+Y** undo and redo, sixty steps deep.
 
-
-## Building a release
+## Building
 
 ```bash
 npm run build
 ```
 
 Puts a zip in `dist/`. Pushing a `v*` tag does the same on GitHub and attaches
-it to the release.
-
-## Status
-
-Whether something is running or installed is shown as a rule down the left edge
-of its row rather than a coloured dot. A dot puts the whole message in the
-colour, so it says nothing at all to anyone who cannot see that colour. Working
-is not a colour here, just a slightly stronger line; only something you might
-want to do about gets one.
-
-## Folding a section
-
-Every section heading folds it away, and what you fold is remembered. Searching
-opens whatever it matched for as long as the search runs, then puts your own
-arrangement back when you clear it; the palette opens whatever it lands in.
-
-## Finding things
-
-**Ctrl+K** opens a palette over every setting in every tab, plus the tabs
-themselves and what the footer and the rail do. Arrows to move, enter to pick,
-and it jumps to the setting and marks it so you can see where you landed.
-
-The box in the corner of the Window manager, Looks and Settings headers filters
-that tab in place instead.
-
-**Ctrl+Z** and **Ctrl+Y** undo and redo, sixty steps deep, covering everything
-you can change including whole workspaces and rules.
-
-## Not done yet
-
-- Reordering widgets within a YASB island (you can only remove them)
-- The `CubicBezier` animation style komorebi supports
+it to the release. The icon is `build/icon.ico`, generated by
+`npx electron build/make-icon.js`, which renders the mark at seven sizes and
+packs them; edit the artwork in that script rather than the .ico.
 
 ## Licence
 
