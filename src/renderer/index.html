@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WM Control</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<aside class="rail">
+  <div class="brand">WM Control</div>
+  <nav>
+    <button class="tab active" data-view="komorebi">Window manager</button>
+    <button class="tab" data-view="map">Live map</button>
+    <button class="tab" data-view="looks">Looks</button>
+    <button class="tab" data-view="shortcuts">Shortcuts</button>
+    <button class="tab" data-view="bar">Status bar</button>
+    <button class="tab" data-view="apps">App rules</button>
+    <button class="tab" data-view="snapshots">Setups</button>
+    <button class="tab" data-view="health">Health</button>
+    <button class="tab" data-view="raw">Raw files</button>
+    <button class="tab" data-view="settings">Settings</button>
+  </nav>
+  <div class="status" id="status">
+    <div class="status-title">Services</div>
+    <div class="svc" data-svc="komorebi"><i></i><span>komorebi</span><button data-restart="komorebi">restart</button></div>
+    <div class="svc" data-svc="whkd"><i></i><span>whkd</span><button data-restart="whkd">restart</button></div>
+    <div class="svc" data-svc="yasb"><i></i><span>yasb</span><button data-restart="yasb">reload</button></div>
+  </div>
+</aside>
+
+<main>
+  <!-- ===== window manager ===== -->
+  <section class="view active" id="view-komorebi">
+    <header>
+      <h1>Window manager</h1>
+      <p>komorebi.json. Changes are written on Save and take effect after a restart.</p>
+    </header>
+
+    <div class="group">
+      <h2>Floating</h2>
+      <label class="row switch">
+        <span class="lbl">Open every new window floating<em>float_override</em></span>
+        <input type="checkbox" data-key="float_override">
+      </label>
+      <label class="row">
+        <span class="lbl">Placement for floated windows<em>float_override_placement</em></span>
+        <select data-key="float_override_placement"></select>
+      </label>
+      <label class="row">
+        <span class="lbl">Placement when you toggle float<em>toggle_float_placement</em></span>
+        <select data-key="toggle_float_placement"></select>
+      </label>
+      <label class="row">
+        <span class="lbl">Placement for app float rules<em>float_rule_placement</em></span>
+        <select data-key="float_rule_placement"></select>
+      </label>
+      <label class="row">
+        <span class="lbl">Size shape when resizing<em>floating_window_aspect_ratio</em></span>
+        <select data-key="floating_window_aspect_ratio"></select>
+      </label>
+      <div class="pv-box" id="pv-placement"></div>
+      <p class="note">Only the resize placements use the aspect ratio. <strong>Center</strong> leaves each window at whatever size the app opens with.</p>
+    </div>
+
+    <div class="group">
+      <h2>Spacing</h2>
+      <label class="row">
+        <span class="lbl">Gap around the workspace<em>default_workspace_padding</em></span>
+        <input type="number" min="0" max="60" data-key="default_workspace_padding">
+      </label>
+      <label class="row">
+        <span class="lbl">Gap between windows<em>default_container_padding</em></span>
+        <input type="number" min="0" max="60" data-key="default_container_padding">
+      </label>
+      <div class="pv-pair">
+        <div class="pv-box" id="pv-edge"></div>
+        <div class="pv-box" id="pv-gap"></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Behaviour</h2>
+      <label class="row switch">
+        <span class="lbl">Move the cursor to the window I focus<em>mouse_follows_focus</em></span>
+        <input type="checkbox" data-key="mouse_follows_focus">
+      </label>
+      <label class="row">
+        <span class="lbl">How hidden windows are hidden<em>window_hiding_behaviour</em></span>
+        <select data-key="window_hiding_behaviour"></select>
+      </label>
+      <label class="row">
+        <span class="lbl">Focus order in monocle<em>monocle_focus_behaviour</em></span>
+        <select data-key="monocle_focus_behaviour"></select>
+      </label>
+      <label class="row">
+        <span class="lbl">Pixels per resize step<em>resize_delta</em></span>
+        <input type="number" min="1" max="200" data-key="resize_delta">
+      </label>
+      <p class="note">The resize step is the only pixel amount komorebi has. It is used by
+        <strong>resize-edge</strong> and <strong>resize-axis</strong>. Moving a window swaps it
+        with its neighbour instead of shifting it by pixels, so there is nothing to set there.
+        This one applies live.</p>
+      <div class="pv-box" id="pv-hiding"></div>
+    </div>
+
+    <div class="group">
+      <h2>Screen edges</h2>
+      <p class="note">Space reserved around the whole screen, for example to keep the bar clear.</p>
+      <div class="edges" data-explain="global_work_area_offset">
+        <label><span>Left</span><input type="number" data-nested="global_work_area_offset.left"></label>
+        <label><span>Top</span><input type="number" data-nested="global_work_area_offset.top"></label>
+        <label><span>Right</span><input type="number" data-nested="global_work_area_offset.right"></label>
+        <label><span>Bottom</span><input type="number" data-nested="global_work_area_offset.bottom"></label>
+      </div>
+      <div class="pv-box" id="pv-workarea"></div>
+    </div>
+
+    <div class="group">
+      <h2>Screens</h2>
+      <div id="monitors" class="mon-list"></div>
+      <p class="note">Each screen keeps its own workspaces. komorebi matches these blocks to
+        physical screens by index, so the order here is the order Windows reports them in.</p>
+    </div>
+
+    <div class="group">
+      <h2>Workspaces</h2>
+      <div id="workspaces" class="ws-list"></div>
+      <div class="ws-actions">
+        <button class="ghost" id="ws-add">Add workspace</button>
+      </div>
+      <p class="note">Per workspace you can override the global floating behaviour and the gaps. <strong>Inherit</strong> leaves the global setting in charge.</p>
+    </div>
+    <div class="group">
+      <h2>Layout rules</h2>
+      <p class="note">Switch layout automatically as windows open on a workspace.</p>
+      <div id="layout-rules" class="lr-list"></div>
+    </div>
+
+    <div class="group">
+      <h2>Keep on screen everywhere</h2>
+      <p class="note">komorebi never touches these, so they are never hidden when you switch
+        workspace and stay on top of whatever is there. It is the closest thing to pinning.</p>
+      <div id="ignore-rules" class="wsr-list"></div>
+      <div class="ws-actions"><button class="ghost" id="ignore-add">Add application</button></div>
+    </div>
+
+    <div class="group">
+      <h2>Send apps to a workspace</h2>
+      <p class="note">Matched on launch, so an app always lands where you expect it.</p>
+      <div id="ws-rules" class="wsr-list"></div>
+      <div class="ws-actions">
+        <select id="wsr-ws"></select>
+        <button class="ghost" id="wsr-add">Add rule</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== live map ===== -->
+  <section class="view" id="view-map">
+    <header>
+      <h1>Live map</h1>
+      <p>What komorebi is actually doing right now, drawn to scale.</p>
+    </header>
+    <div class="group">
+      <div class="sc-toolbar">
+        <button class="ghost" id="map-refresh">Refresh</button>
+        <span class="live-dot" id="map-live">connecting</span>
+      </div>
+      <p class="note" id="map-msg"></p>
+      <div id="map"></div>
+    </div>
+  </section>
+
+  <!-- ===== looks ===== -->
+  <section class="view" id="view-looks">
+    <header>
+      <h1>Looks</h1>
+      <p>Borders, transparency, animation and the stackbar.</p>
+    </header>
+
+    <div class="group">
+      <label class="row switch" data-explain="live-apply">
+        <span class="lbl">Apply as I change it<em>sends each setting to komorebi straight away</em></span>
+        <input type="checkbox" id="live-apply" checked>
+      </label>
+      <p class="note">Changes are still written to komorebi.json on Save. A few settings have no live command and say so.</p>
+    </div>
+
+    <div class="group">
+      <h2>Borders</h2>
+      <label class="row switch">
+        <span class="lbl">Draw borders<em>border</em></span>
+        <input type="checkbox" data-key="border">
+      </label>
+      <label class="row">
+        <span class="lbl">Thickness<em>border_width</em></span>
+        <input type="number" min="0" max="12" data-key="border_width">
+      </label>
+      <label class="row">
+        <span class="lbl">Distance from the window edge<em>border_offset</em></span>
+        <input type="number" min="-20" max="20" data-key="border_offset">
+      </label>
+      <label class="row">
+        <span class="lbl">Corner style<em>border_style</em></span>
+        <select data-key="border_style"></select>
+      </label>
+      <label class="row">
+        <span class="lbl">Border to draw<em>border_implementation</em></span>
+        <select data-key="border_implementation"></select>
+      </label>
+      <p class="note">komorebi has no numeric corner radius. <strong>Rounded</strong> is the Windows 11 corner, <strong>Square</strong> the Windows 10 one. Offset is the shape control: negative tucks the border under the window, positive pushes it out into the gap.</p>
+      <div class="pv-box" id="pv-border"></div>
+      <div class="colours" id="colours"></div>
+    </div>
+
+    <div class="group">
+      <h2>Transparency</h2>
+      <label class="row switch">
+        <span class="lbl">Fade unfocused windows<em>transparency</em></span>
+        <input type="checkbox" data-key="transparency">
+      </label>
+      <label class="row range">
+        <span class="lbl">How solid they stay<em>transparency_alpha</em></span>
+        <input type="range" min="0" max="255" data-key="transparency_alpha">
+        <output id="alpha-out"></output>
+      </label>
+      <div class="pv-box" id="pv-transparency"></div>
+      <h3>Never fade these</h3>
+      <div id="tr-ignore" class="wsr-list"></div>
+      <div class="ws-actions"><button class="ghost" id="tr-add">Add application</button></div>
+    </div>
+
+    <div class="group">
+      <h2>Wallpaper</h2>
+      <div id="wallpaper" class="wall-list"></div>
+    </div>
+
+    <div class="group">
+      <h2>Animation</h2>
+      <div id="anim"></div>
+      <div class="pv-box" id="pv-easing"></div>
+    </div>
+
+    <div class="group">
+      <h2>Stackbar</h2>
+      <div id="stackbar"></div>
+      <div class="pv-box" id="pv-stackbar"></div>
+    </div>
+  </section>
+
+  <!-- ===== shortcuts ===== -->
+  <section class="view" id="view-shortcuts">
+    <header>
+      <h1>Shortcuts</h1>
+      <p>whkdrc. whkd must be restarted for changes to apply.</p>
+    </header>
+    <div class="group">
+      <div class="sc-toolbar">
+        <input type="search" id="sc-filter" placeholder="Filter by key or command">
+        <button class="ghost" id="sc-add">Add binding</button>
+      </div>
+      <div id="sc-conflicts" class="conflicts"></div>
+      <div id="sc-list" class="sc-list"></div>
+    </div>
+    <div class="group">
+      <h2>Cheat sheet</h2>
+      <div id="cheat" class="cheat"></div>
+    </div>
+  </section>
+
+  <!-- ===== bar ===== -->
+  <section class="view" id="view-bar">
+    <header>
+      <h1>Status bar</h1>
+      <p>YASB. Styles reload the moment they are saved; config.yaml needs a reload.</p>
+    </header>
+    <div class="group">
+      <h2>Widgets in each island</h2>
+      <div id="islands" class="islands"></div>
+      <p class="note">Use the arrows to reorder, <strong>×</strong> to remove, and the picker under each island to add any widget defined in your config.</p>
+    </div>
+
+    <div class="group">
+      <h2>Widget options</h2>
+      <div class="sc-toolbar">
+        <select id="widget-pick"></select>
+      </div>
+      <div id="widget-opts"></div>
+    </div>
+  </section>
+
+  <!-- ===== app rules ===== -->
+  <section class="view" id="view-apps">
+    <header>
+      <h1>App rules</h1>
+      <p>applications.json. Per-application behaviour, matched on the executable name.</p>
+    </header>
+    <div class="group">
+      <div class="sc-toolbar">
+        <input type="search" id="app-filter" placeholder="Filter by application name">
+        <span class="count" id="app-count"></span>
+      </div>
+      <div id="app-list" class="app-list"></div>
+    </div>
+    <div class="group">
+      <h2>Open windows</h2>
+      <div class="sc-toolbar">
+        <input type="search" id="win-filter" placeholder="Filter open windows">
+        <button class="ghost" id="win-refresh">Refresh</button>
+      </div>
+      <div id="win-list" class="win-list"></div>
+      <p class="note">Shows what is running right now, which rules already match it, and lets you add one.</p>
+    </div>
+  </section>
+
+  <!-- ===== snapshots ===== -->
+  <section class="view" id="view-snapshots">
+    <header>
+      <h1>Saved setups</h1>
+      <p>Profiles are setups you switch between. Snapshots are points you go back to.</p>
+    </header>
+
+    <div class="group">
+      <h2>Profiles</h2>
+      <div class="sc-toolbar">
+        <input type="text" id="prof-name" placeholder="Name this setup, for example Work">
+        <button class="ghost" id="prof-save">Save current setup</button>
+      </div>
+      <div id="prof-list" class="snap-list"></div>
+      <p class="note">Applying a profile writes all four config files and restarts komorebi,
+        whkd and YASB, so it takes a few seconds. The files it replaces are backed up first.</p>
+    </div>
+
+    <div class="group">
+      <h2>Snapshots</h2>
+      <div class="sc-toolbar">
+        <input type="text" id="snap-name" placeholder="Name this snapshot">
+        <button class="ghost" id="snap-save">Take snapshot</button>
+      </div>
+      <div id="snap-list" class="snap-list"></div>
+    </div>
+  </section>
+
+  <!-- ===== health ===== -->
+  <section class="view" id="view-health">
+    <header>
+      <h1>Health</h1>
+      <p>The things that actually break this setup, checked in one place.</p>
+    </header>
+    <div class="group">
+      <div class="sc-toolbar">
+        <button class="ghost" id="health-run">Run checks</button>
+      </div>
+      <div id="health-list" class="health-list"></div>
+    </div>
+  </section>
+
+  <!-- ===== raw ===== -->
+  <section class="view" id="view-raw">
+    <header>
+      <h1>Raw files</h1>
+      <p>Direct editing, with the same validation and backups as the forms.</p>
+    </header>
+    <div class="group">
+      <div class="raw-tabs">
+        <button class="raw-tab active" data-file="komorebi">komorebi.json</button>
+        <button class="raw-tab" data-file="whkd">whkdrc</button>
+        <button class="raw-tab" data-file="yasbConfig">yasb config.yaml</button>
+        <button class="raw-tab" data-file="yasbStyles">yasb styles.css</button>
+      </div>
+      <div class="raw-path" id="raw-path"></div>
+      <textarea id="raw-text" spellcheck="false"></textarea>
+    </div>
+  </section>
+
+  <!-- ===== app settings ===== -->
+  <section class="view" id="view-settings">
+    <header>
+      <h1>Settings</h1>
+      <p>How this app looks. Nothing here touches komorebi, whkd or the bar.</p>
+    </header>
+    <div class="group">
+      <div id="settings"></div>
+    </div>
+  </section>
+</main>
+
+<div class="explain idle" id="explain"></div>
+
+<footer class="bar">
+  <span id="msg" class="msg"></span>
+  <div class="actions">
+    <button class="ghost" id="btn-diff">Preview changes</button>
+    <button class="ghost" id="btn-reload">Reload from disk</button>
+    <button class="primary" id="btn-save">Save</button>
+    <button class="accent" id="btn-apply">Save and apply</button>
+  </div>
+</footer>
+
+<div class="modal" id="setup-modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>Before this can do anything</h2>
+      <button class="ghost" id="setup-close">Carry on anyway</button>
+    </div>
+    <div style="padding: 14px 18px 18px">
+      <p class="note" id="setup-intro"></p>
+      <div id="setup-list" class="setup-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="pick-modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>Pick an application</h2>
+      <button class="ghost" id="pick-close">Close</button>
+    </div>
+    <div class="raw-tabs" id="pick-tabs" style="padding: 12px 18px 0; margin-bottom: 0">
+      <button class="raw-tab active" data-source="open">Open windows</button>
+      <button class="raw-tab" data-source="installed">Installed</button>
+    </div>
+    <div class="sc-toolbar" style="padding: 12px 18px 0">
+      <input type="search" id="pick-filter" placeholder="Filter by name, executable or title">
+    </div>
+    <div id="pick-list" class="win-list" style="padding: 12px 18px 18px"></div>
+  </div>
+</div>
+
+<div class="modal" id="diff-modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>Pending changes</h2>
+      <button class="ghost" id="diff-close">Close</button>
+    </div>
+    <div id="diff-box" class="diff-box"></div>
+  </div>
+</div>
+
+<script src="enums.js"></script>
+<script src="catppuccin.js"></script>
+<script src="yasb-widgets.js"></script>
+<script src="app.js"></script>
+<script src="looks.js"></script>
+<script src="features.js"></script>
+<script src="features2.js"></script>
+<script src="preview.js"></script>
+<script src="rules.js"></script>
+<script src="map.js"></script>
+<script src="setup.js"></script>
+<script src="settings.js"></script>
+<script src="explain.js"></script>
+</body>
+</html>

@@ -1,0 +1,696 @@
+const { app, BrowserWindow, ipcMain, shell, dialog } = require("electron");
+const fs = require("node:fs/promises");
+const path = require("node:path");
+const { execFile, spawn } = require("node:child_process");
+const net = require("node:net");
+const YAML = require("yaml");
+const P = require("./paths");
+const KOMOREBIC_COMMANDS = require("./komorebic-commands");
+
+// Read through a getter rather than copied once, so pointing the app at a
+// different komorebi.json from Settings takes effect without a restart.
+const FILES = {
+  komorebi: { get path() { return P.komorebiConfig; }, format: "json", empty: "{}" },
+  whkd: { get path() { return P.whkdrc; }, format: "text", empty: "" },
+  yasbConfig: { get path() { return P.yasbConfig; }, format: "yaml", empty: "" },
+  yasbStyles: { get path() { return P.yasbStyles; }, format: "text", empty: "" },
+  appRules: { get path() { return P.appRules; }, format: "json", empty: "{}" },
+};
+
+const STORE = path.join(require("node:os").homedir(), ".config", "wm-control");
+const SNAPSHOT_DIR = path.join(STORE, "snapshots");
+const PROFILE_DIR = path.join(STORE, "profiles");
+const ACTIVE_FILE = path.join(PROFILE_DIR, "active.json");
+
+let win;
+
+function createWindow() {
+  win = new BrowserWindow({
+    width: 1180,
+    height: 820,
+    minWidth: 900,
+    minHeight: 600,
+    backgroundColor: "#0e1117",
+    title: "WM Control",
+    autoHideMenuBar: true,
+    alwaysOnTop: true,
+    webPreferences: { preload: path.join(__dirname, "preload.js") },
+  });
+  win.loadFile(path.join(__dirname, "renderer", "index.html"));
+  win.on("closed", () => { win = null; });
+}
+
+app.whenReady().then(() => {
+  createWindow();
+  // Compiling the C# inside mover.ps1 takes about two seconds. Doing it now
+  // means the first window someone drags moves straight away.
+  moverProcess();
+});
+
+/* ---------- reading ---------- */
+
+// Someone opening this the day they install komorebi has no config yet. That is
+// a thing to tell them about on the setup screen, not a parse error in the
+// message bar, so a missing file comes back empty and flagged.
+ipcMain.handle("config:read", async (_e, kind) => {
+  const entry = FILES[kind];
+  if (!entry) throw new Error(`unknown config: ${kind}`);
+  try {
+    const text = await fs.readFile(entry.path, "utf8");
+    return { text, path: entry.path, format: entry.format };
+  } catch {
+    return { text: entry.empty, path: entry.path, format: entry.format, missing: true };
+  }
+});
+
+ipcMain.handle("setup:check", () => P.report());
+
+ipcMain.handle("setup:locate", async (_e, key) => {
+  const r = await dialog.showOpenDialog(win, {
+    title: `Where is ${key.replace(/Exe$/, "")}?`,
+    properties: ["openFile"],
+    filters: key.endsWith("Exe")
+      ? [{ name: "Programs", extensions: ["exe"] }]
+      : [{ name: "Config files", extensions: ["json", "yaml", "yml", "css", "*"] }],
+  });
+  if (r.canceled || !r.filePaths[0]) return null;
+  return P.setOverride(key, r.filePaths[0]);
+});
+
+/* ---------- validation ---------- */
+
+function validate(format, text) {
+  if (format === "json") {
+    try {
+      JSON.parse(text);
+    } catch (err) {
+      return `Invalid JSON: ${err.message}`;
+    }
+  }
+  if (format === "yaml") {
+    try {
+      YAML.parse(text);
+    } catch (err) {
+      return `Invalid YAML: ${err.message}`;
+    }
+  }
+  return null;
+}
+
+ipcMain.handle("config:validate", async (_e, kind, text) => {
+  const entry = FILES[kind];
+  if (!entry) throw new Error(`unknown config: ${kind}`);
+  const error = validate(entry.format, text);
+  if (!error) return null;
+  let baseline = null;
+  try {
+    baseline = validate(entry.format, await fs.readFile(entry.path, "utf8"));
+  } catch {}
+  // Do not report a fault the file already had before this edit.
+  return baseline ? null : error;
+});
+
+/* ---------- writing ---------- */
+
+// A bad write here takes down the window manager, so never write without a
+// parseable file and a timestamped copy of what was there before.
+ipcMain.handle("config:write", async (_e, kind, text) => {
+  const entry = FILES[kind];
+  if (!entry) throw new Error(`unknown config: ${kind}`);
+
+  // Some working config files do not satisfy a strict parser. YASB's own
+  // config, for instance, has a flow sequence the yaml package rejects while
+  // YASB itself runs on it happily. Blocking on that would make every save
+  // impossible, so only refuse errors the edit actually introduced.
+  const error = validate(entry.format, text);
+  if (error) {
+    let baseline = null;
+    try {
+      baseline = validate(entry.format, await fs.readFile(entry.path, "utf8"));
+    } catch {}
+    if (!baseline) return { ok: false, error };
+    // The file on disk already failed the same way, so this is pre-existing.
+  }
+
+  let backup = null;
+  try {
+    const current = await fs.readFile(entry.path, "utf8");
+    if (current !== text) {
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      backup = `${entry.path}.bak-${stamp}`;
+      await fs.writeFile(backup, current, "utf8");
+    }
+  } catch {
+    // no existing file to back up
+  }
+
+  await fs.writeFile(entry.path, text, "utf8");
+  return { ok: true, backup };
+});
+
+/* ---------- process status and control ---------- */
+
+const PROCESSES = {
+  komorebi: { exe: () => P.komorebiExe, image: "komorebi.exe" },
+  whkd: { exe: () => P.whkdExe, image: "whkd.exe" },
+  yasb: { exe: () => P.yasbExe, image: "yasb.exe" },
+};
+
+// A packaged build keeps the app inside app.asar, which PowerShell cannot read
+// from because it is an archive rather than a folder. The .ps1 files are
+// unpacked beside it, so the path has to point at the unpacked copy. In
+// development there is no archive and this changes nothing.
+const scriptPath = (name) => path.join(__dirname, name)
+  .replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
+
+function run(file, args, opts = {}) {
+  return new Promise((resolve) => {
+    // A tool that was never found has a null path, and execFile throws on that
+    // rather than reporting it, which would take the whole handler down.
+    if (!file) return resolve({ ok: false, stdout: "", stderr: "not installed, or not found" });
+    execFile(file, args, { windowsHide: true, ...opts }, (err, stdout, stderr) => {
+      resolve({ ok: !err, stdout: stdout || "", stderr: stderr || String(err || "") });
+    });
+  });
+}
+
+ipcMain.handle("status:get", async () => {
+  const out = {};
+  for (const [name, meta] of Object.entries(PROCESSES)) {
+    const r = await run("tasklist", ["/FI", `IMAGENAME eq ${meta.image}`, "/NH"]);
+    out[name] = r.stdout.toLowerCase().includes(meta.image.toLowerCase());
+  }
+  return out;
+});
+
+// Detached so the child is not tied to this app's lifetime, which also keeps
+// komorebi alive if the editor is closed.
+function launch(exe) {
+  const child = spawn(exe, [], { detached: true, stdio: "ignore", windowsHide: true });
+  child.unref();
+}
+
+async function restartService(name) {
+  const meta = PROCESSES[name];
+  if (!meta) throw new Error(`unknown service: ${name}`);
+  const exe = meta.exe();
+  if (!exe) return { ok: false, detail: `is not installed, or I could not find it` };
+
+  if (name === "yasb") {
+    // yasbc reloads in place without dropping the komorebi subscription
+    const r = await run(P.yasbcExe, ["reload"]);
+    return { ok: r.ok, detail: r.ok ? "reloaded" : r.stderr };
+  }
+
+  await run("taskkill", ["/F", "/IM", meta.image]);
+  await new Promise((r) => setTimeout(r, 2500));
+  launch(exe);
+  await new Promise((r) => setTimeout(r, 3500));
+
+  const check = await run("tasklist", ["/FI", `IMAGENAME eq ${meta.image}`, "/NH"]);
+  const running = check.stdout.toLowerCase().includes(meta.image.toLowerCase());
+  if (running && name === "komorebi") await resubscribe();
+  return { ok: running, detail: running ? "restarted" : "did not come back" };
+}
+
+// komorebi holds its subscribers in memory, so restarting it drops every one of
+// them. Nobody is told; the events simply stop, which is why the bar and the
+// live map look frozen afterwards. Both are signed up again here.
+async function resubscribe() {
+  if (pipeServer) await run(P.komorebicExe, ["subscribe-pipe", PIPE_NAME]);
+  await run(P.yasbcExe, ["reload"]);
+}
+
+ipcMain.handle("service:restart", (_e, name) => restartService(name));
+
+ipcMain.handle("komorebic:run", async (_e, args) => {
+  const r = await run(P.komorebicExe, args);
+  const failed = /os error|Error:/i.test(r.stderr) || /os error|Error:/i.test(r.stdout);
+  return { ok: r.ok && !failed, output: (r.stdout + r.stderr).trim() };
+});
+
+// If a config change stops komorebi booting, the only thing that helps is
+// getting the previous file back quickly.
+ipcMain.handle("config:restore", async (_e, kind, backupPath) => {
+  const entry = FILES[kind];
+  if (!entry) throw new Error(`unknown config: ${kind}`);
+  const text = await fs.readFile(backupPath, "utf8");
+  await fs.writeFile(entry.path, text, "utf8");
+  return { ok: true };
+});
+
+/* ---------- snapshots ---------- */
+
+ipcMain.handle("snapshot:list", () => listBundles(SNAPSHOT_DIR));
+
+// Snapshots and profiles keep the same thing on disk, a copy of every config
+// file, and differ only in what you do with it: a snapshot is a point to go
+// back to, a profile is a setup you switch between and apply.
+async function saveBundle(root, name, fallback) {
+  const safe = name.replace(/[^\w. -]/g, "_").trim() || fallback;
+  const dir = path.join(root, safe);
+  await fs.mkdir(dir, { recursive: true });
+  const saved = [];
+  for (const [kind, entry] of Object.entries(FILES)) {
+    try {
+      const text = await fs.readFile(entry.path, "utf8");
+      await fs.writeFile(path.join(dir, `${kind}.snapshot`), text, "utf8");
+      saved.push(kind);
+    } catch {
+      // file may not exist; skip it rather than fail the whole bundle
+    }
+  }
+  return { ok: true, name: safe, saved };
+}
+
+async function restoreBundle(root, name) {
+  const dir = path.join(root, name);
+  const restored = [];
+  for (const [kind, entry] of Object.entries(FILES)) {
+    const src = path.join(dir, `${kind}.snapshot`);
+    let text;
+    try {
+      text = await fs.readFile(src, "utf8");
+    } catch {
+      continue; // bundle did not include this file
+    }
+    const err = validate(entry.format, text);
+    if (err) return { ok: false, error: `${kind}: ${err}` };
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    try {
+      const cur = await fs.readFile(entry.path, "utf8");
+      await fs.writeFile(`${entry.path}.bak-${stamp}`, cur, "utf8");
+    } catch {}
+    await fs.writeFile(entry.path, text, "utf8");
+    restored.push(kind);
+  }
+  return { ok: true, restored };
+}
+
+async function listBundles(root) {
+  try {
+    const names = await fs.readdir(root);
+    const out = [];
+    for (const n of names) {
+      const st = await fs.stat(path.join(root, n));
+      if (st.isDirectory()) out.push({ name: n, saved: st.mtime.toISOString() });
+    }
+    return out.sort((a, b) => b.saved.localeCompare(a.saved));
+  } catch {
+    return [];
+  }
+}
+
+ipcMain.handle("snapshot:save", (_e, name) => saveBundle(SNAPSHOT_DIR, name, "snapshot"));
+
+ipcMain.handle("snapshot:restore", (_e, name) => restoreBundle(SNAPSHOT_DIR, name));
+
+ipcMain.handle("snapshot:delete", async (_e, name) => {
+  await fs.rm(path.join(SNAPSHOT_DIR, name), { recursive: true, force: true });
+  return { ok: true };
+});
+
+/* ---------- profiles ---------- */
+
+// A profile is a whole setup you switch between on purpose, so applying one
+// means putting the files back AND restarting what reads them.
+async function activeProfile() {
+  try {
+    return JSON.parse(await fs.readFile(ACTIVE_FILE, "utf8")).name;
+  } catch {
+    return null;
+  }
+}
+
+ipcMain.handle("profile:list", async () => ({
+  profiles: await listBundles(PROFILE_DIR),
+  active: await activeProfile(),
+}));
+
+ipcMain.handle("profile:save", async (_e, name) => {
+  const r = await saveBundle(PROFILE_DIR, name, "profile");
+  await fs.writeFile(ACTIVE_FILE, JSON.stringify({ name: r.name }), "utf8");
+  return r;
+});
+
+ipcMain.handle("profile:delete", async (_e, name) => {
+  await fs.rm(path.join(PROFILE_DIR, name), { recursive: true, force: true });
+  if ((await activeProfile()) === name) {
+    await fs.rm(ACTIVE_FILE, { force: true });
+  }
+  return { ok: true };
+});
+
+ipcMain.handle("profile:apply", async (_e, name) => {
+  const r = await restoreBundle(PROFILE_DIR, name);
+  if (!r.ok) return r;
+  await fs.writeFile(ACTIVE_FILE, JSON.stringify({ name }), "utf8");
+
+  const services = [];
+  for (const svc of ["komorebi", "whkd", "yasb"]) {
+    const s = await restartService(svc);
+    services.push({ name: svc, ...s });
+  }
+  return { ok: true, restored: r.restored, services };
+});
+
+/* ---------- health ---------- */
+
+ipcMain.handle("health:check", async () => {
+  const checks = [];
+  const os = require("node:os");
+
+  for (const [name, meta] of Object.entries(PROCESSES)) {
+    const r = await run("tasklist", ["/FI", `IMAGENAME eq ${meta.image}`, "/NH"]);
+    const up = r.stdout.toLowerCase().includes(meta.image.toLowerCase());
+    checks.push({ id: name, label: `${name} running`, ok: up, detail: up ? "" : "not running" });
+  }
+
+  // Sending a command and reading state back use different paths and fail
+  // independently, so testing only one gives a misleading answer.
+  const kc = await run(P.komorebicExe, ["state"]);
+  const readOk = !/os error|panicked/i.test(kc.stdout + kc.stderr);
+  checks.push({
+    id: "ipc-read",
+    label: "komorebic can read state",
+    ok: readOk,
+    detail: readOk ? "" : "live apply and state queries unavailable",
+  });
+
+  // Re-sending the width it already has is a harmless way to prove the
+  // command path without changing anything.
+  let width = null;
+  try {
+    width = JSON.parse(await fs.readFile(P.komorebiConfig, "utf8")).border_width;
+  } catch {}
+  if (width != null) {
+    const kw = await run(P.komorebicExe, ["border-width", String(width)]);
+    const writeOk = !/os error|panicked|Error:/i.test(kw.stdout + kw.stderr);
+    checks.push({
+      id: "ipc-write",
+      label: "komorebic can send commands",
+      ok: writeOk,
+      detail: writeOk ? "" : "keybindings will not work",
+    });
+  }
+
+  const sockDir = path.join(os.homedir(), "AppData", "Local", "komorebi");
+  try {
+    const files = await fs.readdir(sockDir);
+    const strays = files.filter((f) => f.endsWith(".sock") && f.startsWith("probe-"));
+    checks.push({
+      id: "sockets",
+      label: "no orphaned probe sockets",
+      ok: strays.length === 0,
+      detail: strays.length ? `${strays.length} left behind` : "",
+    });
+  } catch {
+    checks.push({ id: "sockets", label: "socket directory readable", ok: false, detail: "cannot read" });
+  }
+
+  try {
+    const yl = path.join(os.homedir(), ".config", "yasb", "yasb.log");
+    const text = await fs.readFile(yl, "utf8");
+    const tail = text.slice(-20000);
+    const quota = /maximum calls per month/i.test(tail);
+    checks.push({ id: "weather", label: "weather API within quota", ok: !quota, detail: quota ? "monthly limit reached" : "" });
+
+    // A failure only matters if nothing succeeded after it, otherwise a
+    // reconnect during a komorebi restart reads as a permanent fault.
+    const lastFail = tail.lastIndexOf("failed to subscribe named pipe");
+    const lastOk = tail.lastIndexOf("connected to named pipe");
+    const pipeBroken = lastFail !== -1 && lastFail > lastOk;
+    checks.push({
+      id: "pipe",
+      label: "bar subscribed to komorebi",
+      ok: !pipeBroken,
+      detail: pipeBroken ? "subscription failing, workspace widget will not update" : "",
+    });
+  } catch {
+    checks.push({ id: "yasblog", label: "yasb log readable", ok: false, detail: "not found" });
+  }
+
+  return checks;
+});
+
+/* ---------- introspection for the editors ---------- */
+
+/* ---------- live events ---------- */
+
+// komorebi pushes a JSON line down a named pipe every time something changes,
+// which is how the bar stays in sync. Anything arriving is treated as "state
+// moved", so this does not depend on the event payload shape.
+const PIPE_NAME = "wm-control-events";
+let pipeServer = null;
+
+function startEvents() {
+  if (pipeServer) return { ok: true, already: true };
+  pipeServer = net.createServer((socket) => {
+    // komorebi keeps sending after the window goes away, and a closed
+    // BrowserWindow is still an object, so `win?.` is not enough on its own.
+    socket.on("data", () => {
+      if (win && !win.isDestroyed()) win.webContents.send("komorebi:event");
+    });
+    socket.on("error", () => {});
+  });
+  pipeServer.on("error", () => { pipeServer = null; });
+  return new Promise((resolve) => {
+    pipeServer.listen(path.join("\\\\.\\pipe", PIPE_NAME), async () => {
+      const r = await run(P.komorebicExe, ["subscribe-pipe", PIPE_NAME]);
+      const err = (r.stderr || r.stdout || "").split(/\r?\n/)[0];
+      resolve({ ok: r.ok, error: r.ok ? null : err });
+    });
+  });
+}
+
+ipcMain.handle("events:start", () => startEvents());
+
+async function stopEvents() {
+  if (!pipeServer) return;
+  const server = pipeServer;
+  pipeServer = null;
+  server.close();
+  await run(P.komorebicExe, ["unsubscribe-pipe", PIPE_NAME]);
+}
+
+// Stop the subscription as the window goes, not at quit, so komorebi is not
+// still writing to a pipe nobody is reading.
+app.on("window-all-closed", async () => {
+  await stopEvents();
+  app.quit();
+});
+app.on("before-quit", async () => {
+  if (mover) mover.kill();
+  await stopEvents();
+});
+
+// komorebic prints UTF-8, but a console redirect can hand back UTF-16, so the
+// BOM decides rather than assuming.
+// Floating windows are moved directly, because komorebi has no command that
+// puts a window at a position.
+// Retiling or monocling something else raises that window over this one. Being
+// always on top is a property of this window, so komorebi cannot take it away.
+ipcMain.handle("window:onTop", (_e, on) => {
+  if (!win || win.isDestroyed()) return false;
+  win.setAlwaysOnTop(!!on, "floating");
+  return win.isAlwaysOnTop();
+});
+
+// A drag sends a move every frame, and starting powershell takes long enough
+// that one process per move would make it stutter. One stays open instead and
+// answers a line per command, so the replies can be handed back in order.
+let mover = null;
+const moverWaiting = [];
+
+function moverProcess() {
+  if (mover) return mover;
+  mover = spawn("powershell", [
+    "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+    "-File", scriptPath("mover.ps1"),
+  ], { windowsHide: true });
+
+  let buffer = "";
+  mover.stdout.on("data", (chunk) => {
+    buffer += chunk;
+    let cut;
+    while ((cut = buffer.indexOf("\n")) >= 0) {
+      const line = buffer.slice(0, cut).trim();
+      buffer = buffer.slice(cut + 1);
+      const done = moverWaiting.shift();
+      if (done) done({ ok: line === "ok", output: line });
+    }
+  });
+
+  const stopped = () => {
+    mover = null;
+    while (moverWaiting.length) moverWaiting.shift()({ ok: false, output: "the mover stopped" });
+  };
+  mover.on("exit", stopped);
+  mover.on("error", stopped);
+  return mover;
+}
+
+ipcMain.handle("window:move", (_e, hwnd, rect) => {
+  const ps = moverProcess();
+  return new Promise((resolve) => {
+    moverWaiting.push(resolve);
+    ps.stdin.write(`${hwnd} ${rect.x} ${rect.y} ${rect.w} ${rect.h}\n`);
+  });
+});
+
+// komorebic prints UTF-8, but a console redirect can hand back UTF-16, so the
+// byte order mark decides rather than assuming one of them.
+function decode(stdout) {
+  const buf = Buffer.isBuffer(stdout) ? stdout : Buffer.from(String(stdout));
+  if (!buf.length) return "";
+  const utf16 = buf[0] === 0xff && buf[1] === 0xfe;
+  return utf16 ? buf.toString("utf16le").slice(1) : buf.toString("utf8").replace(/^﻿/, "");
+}
+
+ipcMain.handle("komorebi:state", async () => {
+  const r = await run(P.komorebicExe, ["state"], { encoding: "buffer", maxBuffer: 8 * 1024 * 1024 });
+  const text = decode(r.stdout);
+  if (!text) return { ok: false, error: String(r.stderr || "no output from komorebic") };
+  try {
+    return { ok: true, state: JSON.parse(text) };
+  } catch (e) {
+    return { ok: false, error: `could not read komorebic state: ${e.message}` };
+  }
+});
+
+ipcMain.handle("komorebic:commands", () => KOMOREBIC_COMMANDS);
+
+// enums.js is generated from one version of komorebi and shipped with the app,
+// which is wrong for anybody running a different one: they get options komorebi
+// rejects, or miss options it has gained. The installed komorebi describes
+// itself, so it is asked, and the shipped lists are only the fallback.
+const SCHEMA_ENUMS = {
+  LAYOUTS: "DefaultLayout",
+  PLACEMENTS: "Placement",
+  ASPECT_RATIOS: "PredefinedAspectRatio",
+  BORDER_STYLES: "BorderStyle",
+  BORDER_IMPLEMENTATIONS: "BorderImplementation",
+  STACKBAR_MODES: "StackbarMode",
+  STACKBAR_LABELS: "StackbarLabel",
+  HIDING: "HidingBehaviour",
+  MONOCLE_FOCUS: "MonocleFocusBehaviour",
+  EASING: "AnimationStyle",
+  IDENTIFIERS: "ApplicationIdentifier",
+  MATCH_STRATEGIES: "MatchingStrategy",
+};
+
+let schemaCache = null;
+
+ipcMain.handle("komorebic:schema", async () => {
+  if (schemaCache) return schemaCache;
+  const r = await run(P.komorebicExe, ["static-config-schema"],
+    { encoding: "buffer", maxBuffer: 16 * 1024 * 1024 });
+  const text = decode(r.stdout);
+  if (!text) return null;
+
+  try {
+    const schema = JSON.parse(text);
+    const defs = schema.definitions || schema.$defs || {};
+    const out = { version: (schema.description || "").match(/v[\d.]+/)?.[0] || null };
+    // Filtered rather than rejected wholesale: AnimationStyle lists 31 named
+    // easings and then CubicBezier, which takes four numbers instead of being a
+    // name, and demanding every entry be a string threw the other 31 away.
+    for (const [name, definition] of Object.entries(SCHEMA_ENUMS)) {
+      const d = defs[definition];
+      const values = (d?.enum || (Array.isArray(d?.oneOf) ? d.oneOf.map((o) => o.const) : []))
+        .filter((v) => typeof v === "string");
+      if (values.length) out[name] = values;
+    }
+    schemaCache = out;
+    return out;
+  } catch {
+    return null;
+  }
+});
+
+// Visible top-level windows, so app rules can be built from something real
+// instead of guessing executable names.
+ipcMain.handle("windows:list", async () => {
+  const r = await run("powershell", [
+    "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+    "-File", scriptPath("list-windows.ps1"),
+  ]);
+  try {
+    const parsed = JSON.parse(r.stdout.trim() || "[]");
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch {
+    return [];
+  }
+});
+
+// Rules are often written for something that is not running, so the Start Menu
+// is walked for what is installed. It takes a few seconds, so the renderer asks
+// once and keeps the answer.
+ipcMain.handle("apps:list", async () => {
+  const r = await run("powershell", [
+    "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+    "-File", scriptPath("list-apps.ps1"),
+  ], { maxBuffer: 4 * 1024 * 1024 });
+  try {
+    const parsed = JSON.parse(r.stdout.trim() || "[]");
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch {
+    return [];
+  }
+});
+
+// A plain line diff is enough to see what a save is about to do.
+ipcMain.handle("config:diff", async (_e, kind, next) => {
+  const entry = FILES[kind];
+  if (!entry) throw new Error(`unknown config: ${kind}`);
+  let current = "";
+  try {
+    current = await fs.readFile(entry.path, "utf8");
+  } catch {}
+  const a = current.split("\n");
+  const b = next.split("\n");
+  const out = [];
+  const max = Math.max(a.length, b.length);
+  for (let i = 0; i < max; i++) {
+    if (a[i] === b[i]) continue;
+    if (a[i] !== undefined) out.push({ sign: "-", line: a[i], n: i + 1 });
+    if (b[i] !== undefined) out.push({ sign: "+", line: b[i], n: i + 1 });
+  }
+  return out;
+});
+
+ipcMain.handle("file:reveal", (_e, kind) => {
+  const entry = FILES[kind];
+  if (entry) shell.showItemInFolder(entry.path);
+});
+
+// The Desktop key holds Windows' re-encoded copy, which gets overwritten. The
+// wallpaper history holds the file you actually picked.
+ipcMain.handle("wallpaper:current", async () => {
+  const r = await run("powershell", [
+    "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+    "-File", scriptPath("current-wallpaper.ps1"),
+  ]);
+  return r.stdout.trim() || null;
+});
+
+ipcMain.handle("dialog:pickImage", async () => {
+  const r = await dialog.showOpenDialog(win, {
+    title: "Choose a wallpaper",
+    properties: ["openFile"],
+    filters: [{ name: "Images", extensions: ["jpg", "jpeg", "png", "bmp", "webp"] }],
+  });
+  return r.canceled ? null : r.filePaths[0];
+});
+
+ipcMain.handle("dialog:confirm", async (_e, message, detail) => {
+  const { response } = await dialog.showMessageBox(win, {
+    type: "warning",
+    buttons: ["Cancel", "Continue"],
+    defaultId: 0,
+    cancelId: 0,
+    message,
+    detail,
+  });
+  return response === 1;
+});

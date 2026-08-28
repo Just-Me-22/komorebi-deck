@@ -1,0 +1,30 @@
+{
+  "name": "wm-control",
+  "version": "0.1.0",
+  "description": "Editor for komorebi, whkd and YASB configuration",
+  "license": "MIT",
+  "author": "Just-Me-22",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --publish never"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "yaml": "^2.5.1"
+  },
+  "build": {
+    "appId": "dev.wmcontrol.app",
+    "productName": "WM Control",
+    "directories": { "output": "dist" },
+    "files": ["src/**/*", "package.json"],
+    "asarUnpack": ["**/*.ps1"],
+    "win": {
+      "target": [{ "target": "zip", "arch": ["x64"] }],
+      "artifactName": "WM-Control-${version}-windows-x64.${ext}"
+    }
+  }
+}
