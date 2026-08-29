@@ -317,11 +317,21 @@ ipcMain.handle("status:get", async () => {
   return out;
 });
 
-// Detached so the child is not tied to this app's lifetime, which also keeps
-// komorebi alive if the editor is closed.
+// Started through Start-Process rather than spawned straight, because a console
+// program given no console at all makes Windows open a fresh window for every
+// console program it runs afterwards. whkd runs komorebic on each shortcut, so
+// spawning it with windowsHide put a console on screen at every keypress. A
+// hidden console is what komorebic start gives komorebi, and what komorebic
+// start --whkd gives whkd, so this matches both.
+//
+// Not detached: with detached set, powershell exits 0 and Start-Process quietly
+// starts nothing. Nothing is lost by dropping it, because Start-Process makes
+// the program a child of powershell rather than of this app, so it already
+// outlives the editor.
 function launch(exe) {
-  const child = spawn(exe, [], { detached: true, stdio: "ignore", windowsHide: true });
-  child.unref();
+  const cmd = `Start-Process -FilePath '${exe.replace(/'/g, "''")}' -WindowStyle Hidden`;
+  spawn("powershell", ["-NoProfile", "-NonInteractive", "-Command", cmd],
+    { stdio: "ignore", windowsHide: true });
 }
 
 async function restartService(name) {
