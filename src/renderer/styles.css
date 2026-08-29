@@ -300,9 +300,16 @@ input[type="color"]::-webkit-color-swatch { border: none; }
 .ws-list { display: flex; flex-direction: column; gap: 7px; }
 .ws, .ws-head {
   display: grid;
-  grid-template-columns: 22px 1fr 170px 108px 62px 62px 26px;
+  /* The layout column fits the longest name komorebi has,
+     UltrawideVerticalStack, which needs 198px with the padding and the arrow. */
+  grid-template-columns: 22px 1fr 200px 108px 62px 62px 26px;
   gap: 8px; align-items: center;
 }
+/* Selects are 190px wide by default, which is wider than the tracks they sit in
+   here, and a select that will not shrink lies on top of the field beside it:
+   the floating one covered the gap field entirely, so focusing either drew one
+   box around both. */
+.ws select { min-width: 0; }
 .ws-head { padding-bottom: 5px; }
 .ws-head span {
   font-family: var(--ui); font-size: 8.5px; font-weight: 600;

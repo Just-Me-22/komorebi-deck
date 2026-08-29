@@ -395,8 +395,10 @@ function renderWorkspaces() {
     del.title = "Remove workspace";
     del.addEventListener("click", () => {
       list.splice(i, 1);
-      renderWorkspaces();
       markDirty("komorebi");
+      // Everything reading the workspace list has to catch up, not just this
+      // table: the screen's count, the layout shapes and the rule dropdowns.
+      selectMonitor(state.monitor);
     });
 
     row.append(idx, name, layout, flo, dressNumber(gap, false), dressNumber(edge, false), del);
@@ -407,8 +409,8 @@ function renderWorkspaces() {
 $("#ws-add").addEventListener("click", () => {
   const list = activeMonitor().workspaces;
   list.push({ name: `Workspace ${list.length + 1}`, layout: "BSP" });
-  renderWorkspaces();
   markDirty("komorebi");
+  selectMonitor(state.monitor);
 });
 
 function getNested(obj, dotted) {
