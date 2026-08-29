@@ -234,23 +234,35 @@ ipcMain.handle("config:validate", async (_e, kind, text) => {
 
 // A bad write here takes down the window manager, so never write without a
 // parseable file and a timestamped copy of what was there before.
+// Some working config files do not satisfy a strict parser. YASB's own config,
+// for instance, closes a flow sequence on the next line, which the yaml package
+// rejects and PyYAML, the one YASB actually reads it with, accepts. Refusing
+// that outright would make the file impossible to write and its snapshots
+// impossible to restore, so a write is judged against the file it replaces and
+// refused only when it is worse than what is already there.
+const yamlFaults = (text) => YAML.parseDocument(text).errors.length;
+
+async function blockingError(entry, text) {
+  const error = validate(entry.format, text);
+  if (!error) return null;
+
+  let current;
+  try {
+    current = await fs.readFile(entry.path, "utf8");
+  } catch {
+    return error; // nothing to compare against, so hold the line
+  }
+  if (!validate(entry.format, current)) return error; // the file was fine, this breaks it
+  if (entry.format === "yaml" && yamlFaults(text) > yamlFaults(current)) return error;
+  return null;
+}
+
 ipcMain.handle("config:write", async (_e, kind, text) => {
   const entry = FILES[kind];
   if (!entry) throw new Error(`unknown config: ${kind}`);
 
-  // Some working config files do not satisfy a strict parser. YASB's own
-  // config, for instance, has a flow sequence the yaml package rejects while
-  // YASB itself runs on it happily. Blocking on that would make every save
-  // impossible, so only refuse errors the edit actually introduced.
-  const error = validate(entry.format, text);
-  if (error) {
-    let baseline = null;
-    try {
-      baseline = validate(entry.format, await fs.readFile(entry.path, "utf8"));
-    } catch {}
-    if (!baseline) return { ok: false, error };
-    // The file on disk already failed the same way, so this is pre-existing.
-  }
+  const error = await blockingError(entry, text);
+  if (error) return { ok: false, error };
 
   let backup = null;
   try {
@@ -434,7 +446,10 @@ async function restoreBundle(root, name) {
     } catch {
       continue; // bundle did not include this file
     }
-    const err = validate(entry.format, text);
+    // Judged the same way a normal save is. Without this the app captures a
+    // file a strict parser dislikes and then refuses to give it back, which
+    // makes a snapshot of a working setup impossible to restore.
+    const err = await blockingError(entry, text);
     if (err) return { ok: false, error: `${kind}: ${err}` };
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     try {
