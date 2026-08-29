@@ -351,8 +351,14 @@ ipcMain.handle("status:get", async () => {
 // starts nothing. Nothing is lost by dropping it, because Start-Process makes
 // the program a child of powershell rather than of this app, so it already
 // outlives the editor.
+// Started from the home directory, not from wherever this app happens to live.
+// Without that, whkd inherits the app's working directory and holds the app's
+// own folder open for as long as it runs, so the previous version cannot be
+// deleted after an update until whkd is stopped.
 function launch(exe) {
-  const cmd = `Start-Process -FilePath '${exe.replace(/'/g, "''")}' -WindowStyle Hidden`;
+  const home = require("node:os").homedir();
+  const cmd = `Start-Process -FilePath '${exe.replace(/'/g, "''")}'`
+    + ` -WorkingDirectory '${home.replace(/'/g, "''")}' -WindowStyle Hidden`;
   spawn("powershell", ["-NoProfile", "-NonInteractive", "-Command", cmd],
     { stdio: "ignore", windowsHide: true });
 }
