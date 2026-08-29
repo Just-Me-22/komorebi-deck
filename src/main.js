@@ -257,6 +257,32 @@ async function blockingError(entry, text) {
   return null;
 }
 
+const KEEP_BACKUPS = 10;
+
+// Every save used to leave a .bak behind and nothing ever removed one, so a
+// couple of days of editing left dozens of them sitting next to the config.
+// Only the ones this app wrote are counted: a name matching the stamp it uses.
+// Anything else beside the file was put there by hand and is not ours to bin.
+const OURS = /\.bak-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/;
+
+async function pruneBackups(file) {
+  const dir = path.dirname(file);
+  const prefix = `${path.basename(file)}.bak-`;
+  let names;
+  try {
+    names = await fs.readdir(dir);
+  } catch {
+    return;
+  }
+  const mine = names
+    .filter((n) => n.startsWith(prefix) && OURS.test(n))
+    .sort() // the stamp sorts oldest first on its own
+    .slice(0, -KEEP_BACKUPS);
+  for (const n of mine) {
+    await fs.rm(path.join(dir, n), { force: true });
+  }
+}
+
 ipcMain.handle("config:write", async (_e, kind, text) => {
   const entry = FILES[kind];
   if (!entry) throw new Error(`unknown config: ${kind}`);
@@ -271,6 +297,7 @@ ipcMain.handle("config:write", async (_e, kind, text) => {
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
       backup = `${entry.path}.bak-${stamp}`;
       await fs.writeFile(backup, current, "utf8");
+      await pruneBackups(entry.path);
     }
   } catch {
     // no existing file to back up
@@ -464,7 +491,12 @@ async function restoreBundle(root, name) {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     try {
       const cur = await fs.readFile(entry.path, "utf8");
-      await fs.writeFile(`${entry.path}.bak-${stamp}`, cur, "utf8");
+      // Only when it differs, same as a save. Restoring a setup you are already
+      // on used to leave a backup identical to the file it backed up.
+      if (cur !== text) {
+        await fs.writeFile(`${entry.path}.bak-${stamp}`, cur, "utf8");
+        await pruneBackups(entry.path);
+      }
     } catch {}
     await fs.writeFile(entry.path, text, "utf8");
     restored.push(kind);
