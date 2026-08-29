@@ -75,7 +75,8 @@ Editing these files by hand is how you end up without a window manager, so:
 
 - JSON and YAML are parsed before anything is written. A file that does not
   parse is refused rather than saved.
-- Every write leaves the previous version beside it as `<name>.bak-<timestamp>`.
+- Every write keeps the version it replaced in `~/.config/komorebi-deck/backups`,
+  the last ten per file. Your config folders stay as you left them.
 - Restarts report whether the process actually came back, and offer to put the
   previous config back if it did not.
 - **Setups** keeps named copies of every config file, so you can switch between
