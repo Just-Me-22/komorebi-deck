@@ -27,7 +27,7 @@ const EXPLAIN = {
   mouse_follows_focus: ["The pointer jumps to whatever you focus",
     "Move focus with the keyboard and the mouse pointer goes with it, so a click lands where you are already looking. Off, the pointer stays where you left it."],
   window_hiding_behaviour: ["How windows vanish when you switch workspace",
-    "Cloak is the quiet one and the usual choice. Minimize leaves them sitting in the taskbar. Hide is the blunt option and some apps do not come back from it cleanly.", "hiding"],
+    "Cloak is the quiet one and the usual choice. Minimize leaves them sitting in the taskbar. Hide is the blunt option and some apps do not come back from it cleanly. There is no fourth option for not hiding at all: to spare one application, add it under Keep on screen everywhere.", "hiding"],
   monocle_focus_behaviour: ["Focusing past the last window in monocle",
     "Cycle wraps back round to the first one. NoOp just stops there."],
   resize_delta: ["How far one press moves a window edge",
