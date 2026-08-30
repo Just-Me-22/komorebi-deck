@@ -46,6 +46,14 @@ function createWindow() {
 // resolves to. Without it a dev run is just another electron.exe.
 app.setAppUserModelId("dev.komorebideck.app");
 
+// Every child process inherits this app's working directory, and a running
+// process holds its working directory open. Started from the unzipped folder,
+// komorebi and whkd kept that folder alive long after an update, so the old
+// version could not be deleted and nothing named the cause: no file was locked,
+// only the directory. Moving out of it once here covers every child, including
+// any added later. Nothing in the app resolves a path relative to the cwd.
+process.chdir(require("node:os").homedir());
+
 app.whenReady().then(() => {
   createWindow();
   // Compiling the C# inside mover.ps1 takes about two seconds. Doing it now

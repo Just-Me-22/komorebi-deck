@@ -37,7 +37,7 @@ const EXPLAIN = {
   border: ["Draw borders at all",
     "Off, komorebi leaves window edges alone and you lose the colour that tells you which window is focused.", "border"],
   border_width: ["How thick the border is, in pixels",
-    "1 or 2 is enough to read at a glance. Past about 6 it starts eating into the window.", "border"],
+    "1 or 2 is enough to read at a glance. Past about 6 it starts eating into the window. Even numbers sit flush: komorebi halves this in whole pixels to place the stroke but draws it at the true width, so an odd number lands half a pixel out and can leave a hairline gap against the window.", "border"],
   border_offset: ["How far the border sits from the window edge",
     "Negative pulls it in under the window, positive pushes it out into the gap. This is the closest thing to a shape control, because komorebi has no corner radius.", "border"],
   border_style: ["The corner shape",

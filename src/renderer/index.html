@@ -229,6 +229,10 @@
         <select data-key="border_implementation"></select>
       </label>
       <p class="note">komorebi has no numeric corner radius. <strong>Rounded</strong> is the Windows 11 corner, <strong>Square</strong> the Windows 10 one. Offset is the shape control: negative tucks the border under the window, positive pushes it out into the gap.</p>
+      <p class="note">Prefer an <strong>even</strong> thickness. komorebi halves it in whole pixels to
+        decide where the stroke goes, then draws the stroke at its true width, so an odd number
+        ends up half a pixel out and can show a hairline gap between the border and the window.
+        Nudging the offset by one hides it if you want an odd number anyway.</p>
       <div class="pv-box" id="pv-border"></div>
       <div class="colours" id="colours"></div>
     </div>
