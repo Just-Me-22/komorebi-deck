@@ -77,6 +77,45 @@ function holdRedraws(on) {
   }
 }
 
+/* komorebi being unreachable is nearly always temporary: it is restarting, or
+   busy enough to miss a one-second timeout. Rather than stopping and asking to
+   be told when to look again, this keeps asking, slowing down as it goes so a
+   komorebi that is genuinely gone costs nothing.
+
+   Coming back also means resubscribing, which the main process does for us the
+   first time a read succeeds after failing. */
+let retryTimer = null;
+let retryWait = 1000;
+let wasFailing = false;
+
+function keepTrying() {
+  if (retryTimer) return;
+  const tick = () => {
+    retryTimer = setTimeout(async () => {
+      retryTimer = null;
+      await refreshMap(true);
+      if (retryTimer === null && document.querySelector("#map-msg.bad")) {
+        retryWait = Math.min(retryWait * 1.6, 15000);
+        tick();
+      }
+    }, retryWait);
+  };
+  tick();
+}
+
+function stopTrying() {
+  clearTimeout(retryTimer);
+  retryTimer = null;
+  retryWait = 1000;
+  if (wasFailing) {
+    wasFailing = false;
+    // Any failure at all means komorebi may have gone and come back, and a
+    // subscription made to the old one went with it. How many retries it took
+    // says nothing about that, so this does not depend on the backoff.
+    startMapEvents();
+  }
+}
+
 function mapChanged() {
   if (!mapLive || !document.querySelector("#view-map").classList.contains("active")) return;
   clearTimeout(mapPending);
@@ -124,8 +163,11 @@ async function refreshMap(quiet) {
     // Whatever was drawn is still the best picture available, so it stays.
     mapNote(readableStateError(r.error), "bad");
     if (!liveState) box.innerHTML = '<p class="note bad">komorebi has not answered yet.</p>';
+    wasFailing = true;
+    keepTrying();
     return;
   }
+  stopTrying();
   if (askAgain) { askAgain = false; setTimeout(() => refreshMap(true), 60); }
   clearMapError();
 
@@ -168,7 +210,9 @@ function readableStateError(raw) {
   if (/10060/.test(text)) {
     return "komorebi did not answer in time. It is usually busy rearranging; this clears itself.";
   }
-  if (/10022/.test(text)) return "komorebi refused the connection. Restarting it from the rail fixes this.";
+  if (/10022/.test(text)) {
+    return "komorebi is not answering. If it has just restarted this reconnects on its own.";
+  }
   if (/10061|No connection could be made/i.test(text)) return "komorebi is not running.";
   if (/panicked/.test(text)) return "komorebic could not talk to komorebi. " + firstLine(text.split("panicked at").pop());
   return firstLine(text) || "komorebi could not be read.";

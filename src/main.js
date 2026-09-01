@@ -770,13 +770,33 @@ function decode(stdout) {
   return utf16 ? buf.toString("utf16le").slice(1) : buf.toString("utf8").replace(/^﻿/, "");
 }
 
+/* A subscription belongs to the komorebi that was running when it was made. If
+   komorebi restarts, that instance takes the subscription with it and this app
+   goes quiet with no error to show for it: the pipe server is still listening,
+   nobody is writing to it any more.
+
+   A restart always costs at least one failed state read, while komorebi is
+   down. So the moment a read succeeds again after failing, the subscription is
+   assumed lost and made again. Cheaper than polling for komorebi's pid, and it
+   cannot miss a restart that this app noticed. */
+let stateFailing = false;
+
 ipcMain.handle("komorebi:state", async () => {
   const r = await run(P.komorebicExe, ["state"], { encoding: "buffer", maxBuffer: 8 * 1024 * 1024 });
   const text = decode(r.stdout);
-  if (!text) return { ok: false, error: String(r.stderr || "no output from komorebic") };
+  if (!text) {
+    stateFailing = true;
+    return { ok: false, error: String(r.stderr || "no output from komorebic") };
+  }
   try {
-    return { ok: true, state: JSON.parse(text) };
+    const state = JSON.parse(text);
+    if (stateFailing) {
+      stateFailing = false;
+      if (pipeServer) await run(P.komorebicExe, ["subscribe-pipe", PIPE_NAME]);
+    }
+    return { ok: true, state, resubscribed: !pipeServer ? false : undefined };
   } catch (e) {
+    stateFailing = true;
     return { ok: false, error: `could not read komorebic state: ${e.message}` };
   }
 });
