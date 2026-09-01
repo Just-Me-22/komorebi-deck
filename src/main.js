@@ -926,6 +926,27 @@ ipcMain.handle("dialog:pickImage", async () => {
 // it is fixed for the life of the process and Settings wants it while rendering.
 ipcMain.on("app:version", (e) => { e.returnValue = app.getVersion(); });
 
+/* ---------- updating the app itself ---------- */
+
+const updater = require("./update");
+
+// Only when the button is pressed. Same rule as the tool versions: this app
+// does not reach the network while it is just sitting there.
+ipcMain.handle("app:updateCheck", () => updater.check());
+
+ipcMain.handle("app:updateDownload", async (e, url, version) => {
+  const send = (fraction) => {
+    if (!e.sender.isDestroyed()) e.sender.send("app:updateProgress", fraction);
+  };
+  try {
+    return await updater.download(url, version, send);
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
+ipcMain.handle("app:updateOpen", (_e, exe) => updater.handOver(exe));
+
 ipcMain.handle("dialog:confirm", async (_e, message, detail) => {
   const { response } = await dialog.showMessageBox(win, {
     type: "warning",

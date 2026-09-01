@@ -165,12 +165,7 @@ function renderSettings() {
   bar.appendChild(reset);
   box.appendChild(bar);
 
-  // There is no installer and no auto-update, so this is the only place someone
-  // can find out which build they unzipped.
-  const version = document.createElement("p");
-  version.className = "note";
-  version.textContent = `Komorebi Deck ${window.wm.version}`;
-  box.appendChild(version);
+  box.appendChild(updateSection());
 
   if (typeof setupGroups === "function") setupGroups();
 }
@@ -285,3 +280,82 @@ function choiceRow(label, hint, options, current, onPick) {
 }
 
 applyUI(loadUI());
+
+
+/* ---------- updating this app ---------- */
+
+/* No installer, so an update is a new folder beside this one, which is what
+   updating by hand already looks like. Nothing is fetched until Check is
+   pressed, and nothing is replaced: the old version stays where it is until
+   you delete it. */
+function updateSection() {
+  const group = document.createElement("div");
+  group.className = "group";
+  group.innerHTML = "<h2>This app</h2>";
+
+  const row = document.createElement("div");
+  row.className = "row";
+  row.innerHTML = `<span class="lbl">Komorebi Deck<em>${window.wm.version}</em></span>`;
+
+  const note = document.createElement("p");
+  note.className = "note";
+  note.textContent = "Checking is a button, so the app never reaches GitHub on its own.";
+
+  const check = document.createElement("button");
+  check.className = "ghost";
+  check.textContent = "Check for updates";
+
+  const act = document.createElement("button");
+  act.className = "accent";
+  act.style.display = "none";
+
+  let found = null;
+
+  check.addEventListener("click", async () => {
+    check.disabled = true;
+    check.textContent = "Checking...";
+    const r = await window.wm.updateCheck();
+    check.textContent = "Check for updates";
+    check.disabled = false;
+
+    if (!r.ok) { note.textContent = `Could not check: ${r.error}`; return; }
+    if (!r.behind) { note.textContent = `${r.here} is the latest.`; return; }
+    if (!r.portable) {
+      note.textContent = `${r.latest} is out, but this is running from source. Pull it instead.`;
+      return;
+    }
+    found = r;
+    note.textContent = `${r.latest} is out. About ${Math.round(r.size / 1e6)}MB. `
+      + "It unpacks into its own folder beside this one, so this version stays put.";
+    act.textContent = `Get ${r.latest}`;
+    act.style.display = "";
+  });
+
+  act.addEventListener("click", async () => {
+    if (!found) return;
+    act.disabled = true;
+    act.textContent = "Downloading...";
+    window.wm.onUpdateProgress((f) => {
+      if (act.disabled) act.textContent = `Downloading ${Math.round(f * 100)}%`;
+    });
+
+    const r = await window.wm.updateDownload(found.url, found.latest);
+    if (!r.ok) {
+      note.textContent = `That did not work: ${r.error}`;
+      act.textContent = `Get ${found.latest}`;
+      act.disabled = false;
+      return;
+    }
+    note.textContent = `Unpacked into ${r.folder}. Opening it closes this one. `
+      + "Delete the old folder whenever you like.";
+    act.textContent = `Open ${found.latest}`;
+    act.disabled = false;
+    act.onclick = () => window.wm.updateOpen(r.exe);
+  });
+
+  const bar = document.createElement("div");
+  bar.className = "sc-toolbar";
+  bar.append(check, act);
+  group.append(row, note, bar);
+  return group;
+}

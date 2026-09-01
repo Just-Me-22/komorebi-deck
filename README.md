@@ -14,7 +14,11 @@ windows between workspaces in that drawing.
 
 Download the zip from [Releases](../../releases), unzip it anywhere, run
 `Komorebi Deck.exe`. There is no installer, and nothing is written outside your
-config files and `~/.config/komorebi-deck`. The download is about 110MB and
+config files and `~/.config/komorebi-deck`.
+
+After that, **Settings** has a Check for updates button. A newer version unpacks
+into its own folder beside the current one and offers to open it, so the version
+you are on stays where it is until you delete it. It only looks when you ask. The download is about 110MB and
 unzips to about 270MB, which is Electron rather than this app.
 
 From source: `npm install && npm start`.
