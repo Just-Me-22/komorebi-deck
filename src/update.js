@@ -107,11 +107,22 @@ async function download(url, version, onProgress) {
 // Hands over: start the new one, quit this one. The old folder is left alone
 // rather than deleted from under a process that is still running.
 function handOver(exe) {
-  execFile("powershell", ["-NoProfile", "-NonInteractive", "-Command",
-    `Start-Process -FilePath '${exe.replace(/'/g, "''")}' -WorkingDirectory '${os.homedir()}'`],
-    { windowsHide: true });
-  setTimeout(() => app.quit(), 600);
-  return { ok: true };
+  // Quitting on a timer raced the launch: this app could be gone before
+  // powershell had finished starting the new one, taking it down with it.
+  // Waiting for powershell to exit is the actual signal, and it exits as soon
+  // as Start-Process has handed off.
+  return new Promise((resolve) => {
+    execFile("powershell", ["-NoProfile", "-NonInteractive", "-Command",
+      `Start-Process -FilePath '${exe.replace(/'/g, "''")}' -WorkingDirectory '${os.homedir()}'`],
+      { windowsHide: true }, (err, _out, stderr) => {
+        if (err) {
+          resolve({ ok: false, error: String(stderr || err).split("\n")[0] });
+          return;
+        }
+        resolve({ ok: true });
+        setTimeout(() => app.quit(), 400);
+      });
+  });
 }
 
 module.exports = { check, download, handOver, layout };

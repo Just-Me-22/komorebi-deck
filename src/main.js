@@ -326,13 +326,39 @@ const PROCESSES = {
 const scriptPath = (name) => path.join(__dirname, name)
   .replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
 
+/* Every failed komorebic call is written down. komorebic answering a terminal
+   and not this app has cost a lot of guessing, and the guesses were wrong every
+   time; a log of the actual command, the actual error and where the app was
+   running from settles it in one read. Failures only, so a working setup writes
+   nothing. */
+const FAIL_LOG = path.join(STORE, "komorebic-failures.log");
+let logged = 0;
+
+function noteFailure(file, args, r) {
+  if (logged > 200) return;
+  logged += 1;
+  const line = [
+    new Date().toISOString(),
+    `cmd    : ${path.basename(file)} ${args.join(" ")}`,
+    `stderr : ${String(r.stderr || "").replace(/\s+/g, " ").slice(0, 300)}`,
+    `stdout : ${String(r.stdout || "").replace(/\s+/g, " ").slice(0, 120)}`,
+    `cwd    : ${process.cwd()}`,
+    "",
+  ].join("\n");
+  fs.mkdir(STORE, { recursive: true })
+    .then(() => fs.appendFile(FAIL_LOG, line, "utf8"))
+    .catch(() => {});
+}
+
 function run(file, args, opts = {}) {
   return new Promise((resolve) => {
     // A tool that was never found has a null path, and execFile throws on that
     // rather than reporting it, which would take the whole handler down.
     if (!file) return resolve({ ok: false, stdout: "", stderr: "not installed, or not found" });
     execFile(file, args, { windowsHide: true, ...opts }, (err, stdout, stderr) => {
-      resolve({ ok: !err, stdout: stdout || "", stderr: stderr || String(err || "") });
+      const r = { ok: !err, stdout: stdout || "", stderr: stderr || String(err || "") };
+      if (!r.ok && /komorebic/i.test(file)) noteFailure(file, args, r);
+      resolve(r);
     });
   });
 }
