@@ -909,9 +909,14 @@ button.has-key kbd {
 .health-list { display: flex; flex-direction: column; }
 .hc { display: flex; align-items: center; gap: 11px; padding: 8px 10px; }
 .hc:nth-child(odd) { background: var(--raise); }
-.hc i { width: 7px; height: 7px; flex: none; }
-.hc.ok i { background: var(--glow); }
+/* A passing check used to be a square in the accent colour and a failing one a
+   square in --bad. With a red or pink accent those are the same square, so the
+   screen said nothing. Passing is now unmarked, the way the rail and the tools
+   rows work: only something you might want to do about gets a mark. */
+.hc i { width: 3px; height: 15px; flex: none; border-radius: 2px; background: none; }
 .hc.bad i { background: var(--bad); }
+.hc.bad .label { color: var(--text); }
+.hc.ok .label { color: var(--dim); }
 .hc .label { flex: 1; font-size: 12.5px; }
 .hc .detail { font-size: 11px; color: var(--warn); }
 
