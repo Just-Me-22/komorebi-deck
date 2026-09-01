@@ -470,7 +470,11 @@ ipcMain.handle("service:restart", (_e, name) => restartService(name));
 
 ipcMain.handle("komorebic:run", async (_e, args) => {
   const r = await run(P.komorebicExe, args);
+  // komorebic prints "Error: ..." and still exits 0 for these, which is why the
+  // exit code alone is not enough to tell whether it worked. It is also why the
+  // failure log missed them at first: it only watched the exit code.
   const failed = /os error|Error:/i.test(r.stderr) || /os error|Error:/i.test(r.stdout);
+  if (failed) noteFailure(P.komorebicExe, args, r);
   return { ok: r.ok && !failed, output: (r.stdout + r.stderr).trim() };
 });
 
@@ -812,6 +816,7 @@ ipcMain.handle("komorebi:state", async () => {
   const text = decode(r.stdout);
   if (!text) {
     stateFailing = true;
+    noteFailure(P.komorebicExe, ["state"], r);
     return { ok: false, error: String(r.stderr || "no output from komorebic") };
   }
   try {
